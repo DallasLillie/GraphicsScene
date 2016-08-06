@@ -3,9 +3,13 @@
 #include "..\Common\DeviceResources.h"
 #include "ShaderStructures.h"
 #include "..\Common\StepTimer.h"
+#include "Model.h"
 
 #include <DirectXMath.h>
 using namespace DirectX;
+
+#define NUM_LIGHTS 3
+
 
 namespace GraphicsScene
 {
@@ -22,11 +26,13 @@ namespace GraphicsScene
 		void StartTracking();
 		void TrackingUpdate(float positionX);
 		void StopTracking();
+		void Sample3DSceneRenderer::InitializeLights();
 		bool IsTracking() { return m_tracking; }
 
 
 	private:
 		void Rotate(float radians);
+		void Sample3DSceneRenderer::Translate(float xOffset, float yOffset, float zOffset);
 
 	private:
 		// Cached pointer to device resources.
@@ -35,14 +41,19 @@ namespace GraphicsScene
 		// Direct3D resources for cube geometry.
 		Microsoft::WRL::ComPtr<ID3D11InputLayout>	m_inputLayout;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_vertexBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_vertexFloor;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_indexBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_indexFloor;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>	m_vertexShader;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	m_pixelShader;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_constantBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_lightBuffer;
 
 		// System resources for cube geometry.
 		ModelViewProjectionConstantBuffer	m_constantBufferData;
+		LightConstantBuffer m_lightBufferData;
 		uint32	m_indexCount;
+		uint32	m_indexFloorCount;
 
 		// Variables used with the rendering loop.
 		bool	m_loadingComplete;
@@ -50,13 +61,20 @@ namespace GraphicsScene
 		bool	m_tracking;
 
 		//Textures
-		ID3D11Texture2D *diffuseCubeTexture;
-		ID3D11Texture2D *diffuseSkyBoxTexture;
 
+		//Samplers
 		ID3D11SamplerState *sampler;
+		ID3D11SamplerState *samplerFloor;
 
+		//SRVs
 		ID3D11ShaderResourceView *cubeSRV;
-		ID3D11ShaderResourceView *SkyBoxSRV;
+		ID3D11ShaderResourceView *floorSRV;
+		ID3D11ShaderResourceView *goombaSRV;
+
+
+		//Models
+		Model pyramid;
+		Model Goomba;
 
 
 		XMFLOAT4X4 world, camera, proj;

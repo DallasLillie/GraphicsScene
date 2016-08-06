@@ -1,3 +1,5 @@
+#include "LightingCalculations.hlsli"
+
 // A constant buffer that stores the three basic column-major matrices for composing geometry.
 cbuffer ModelViewProjectionConstantBuffer : register(b0)
 {
@@ -10,7 +12,7 @@ cbuffer ModelViewProjectionConstantBuffer : register(b0)
 struct VertexShaderInput
 {
 	float3 pos : POSITION;
-	float3 wPos : WPOSITION;
+	//float3 wPos : WPOSITION;
 	float2 texCoord : TEXCOORD;
 	float4 tangent : TANGENT;
 	float3 normal : NORMAL;
@@ -36,14 +38,15 @@ PixelShaderInput main(VertexShaderInput input)
 	// Transform the vertex position into projected space.
 	pos = mul(pos, model);
 	normal = mul(normal, model);
-	input.wPos = pos;
+	output.wPos = pos;
 
 	pos = mul(pos, view);
 	pos = mul(pos, projection);
+
+
 	output.pos = pos;
 	output.normal = normal;
 	output.texCoord = input.texCoord;
-	output.tangent = input.tangent;
 
 	return output;
 }

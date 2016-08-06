@@ -11,12 +11,27 @@ namespace GraphicsScene
 	};
 
 	// Used to send per-vertex data to the vertex shader.
-	struct VertexPositionColorTexture
+	struct RobustVertex
 	{
 		DirectX::XMFLOAT3 pos;
-		DirectX::XMFLOAT3 wPos;
+		//DirectX::XMFLOAT3 wPos;
 		DirectX::XMFLOAT2 texCoords;
-		DirectX::XMFLOAT3 tangent;
+		DirectX::XMFLOAT4 tangent;
 		DirectX::XMFLOAT3 normal;
+	};
+
+	//Structure to hold data for a light
+	struct Light
+	{
+		DirectX::XMFLOAT4 position;
+		DirectX::XMFLOAT4 normal;
+		DirectX::XMFLOAT4 color;
+		//OuterConeRatio, InnerConeRatio, LightRadius, Padding
+		DirectX::XMFLOAT4 ratio;
+	};
+
+	struct LightConstantBuffer
+	{
+		Light lights[3];
 	};
 }

@@ -147,13 +147,22 @@ bool mouse_move = false;
 float diffx = 0;
 float diffy = 0;
 bool left_click = false;
+char buttons[256] = {};
 
 void App::OnPointerPressed(CoreWindow^ sender, PointerEventArgs^ args)
 {
 	diffx = 0;
 	diffy = 0;
-	left_click = true;
 	mouse_move = true;
+	if (args->CurrentPoint->Properties->IsRightButtonPressed)
+	{
+		buttons[2] = true;
+	}
+	else
+	{
+		left_click = true;
+		buttons[2] = false;
+	}
 }
 
 void App::OnPointerReleased(CoreWindow^ sender, PointerEventArgs^ args)
@@ -162,6 +171,15 @@ void App::OnPointerReleased(CoreWindow^ sender, PointerEventArgs^ args)
 	diffy = 0;
 	left_click = false;
 	mouse_move = true;
+
+	if (args->CurrentPoint->Properties->IsRightButtonPressed)
+	{
+		buttons[2] = true;
+	}
+	else
+	{
+		buttons[2] = false;
+	}
 }
 
 void App::OnPointerMoved(CoreWindow^ sender, PointerEventArgs^ args)
@@ -184,49 +202,18 @@ void GraphicsScene::App::OnPointerExited(Windows::UI::Core::CoreWindow ^sender, 
 	diffy = 0;
 	left_click = false;
 	mouse_move = false;
+	buttons[2] = false;
 }
-
-bool w_down = false;
-bool a_down = false;
-bool s_down = false;
-bool d_down = false;
-
-char buttons[256] = {};
 
 void GraphicsScene::App::OnKeyDown(Windows::UI::Core::CoreWindow ^ sender, Windows::UI::Core::KeyEventArgs ^ args)
 {
-
 	buttons[(unsigned int)args->VirtualKey] = true;
-
-	if (args->VirtualKey == Windows::System::VirtualKey::W)
-		w_down = true;
-
-	if (args->VirtualKey == Windows::System::VirtualKey::A)
-		a_down = true;
-
-	if (args->VirtualKey == Windows::System::VirtualKey::S)
-		s_down = true;
-
-	if (args->VirtualKey == Windows::System::VirtualKey::D)
-		d_down = true;
 }
 
 void GraphicsScene::App::OnKeyUp(Windows::UI::Core::CoreWindow ^ sender, Windows::UI::Core::KeyEventArgs ^ args)
 {
 
 	buttons[(unsigned int)args->VirtualKey] = false;
-
-	if (args->VirtualKey == Windows::System::VirtualKey::W)
-		w_down = false;
-
-	if (args->VirtualKey == Windows::System::VirtualKey::A)
-		a_down = false;
-
-	if (args->VirtualKey == Windows::System::VirtualKey::S)
-		s_down = false;
-
-	if (args->VirtualKey == Windows::System::VirtualKey::D)
-		d_down = false;
 }
 
 // Application lifecycle event handlers.

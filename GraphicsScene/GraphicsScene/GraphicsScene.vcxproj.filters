@@ -68,6 +68,7 @@
     <ClCompile Include="GraphicsSceneMain.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="DDSTextureLoader.cpp" />
+    <ClCompile Include="Model.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -77,6 +78,7 @@
     <ClInclude Include="Assets\Textures\Box_Wood02Dark.h">
       <Filter>Assets</Filter>
     </ClInclude>
+    <ClInclude Include="Model.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\StoreLogo.png">
@@ -84,14 +86,19 @@
     </Image>
     <Image Include="SkyboxOcean.dds" />
     <Image Include="Box_Wood02Dark.dds" />
+    <Image Include="tilefloor2_seamless.dds" />
+    <Image Include="Diffuse_Fuzzy.dds" />
+    <Image Include="Normal_Fuzzy.dds" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
   </ItemGroup>
   <ItemGroup>
     <None Include="GraphicsScene_TemporaryKey.pfx" />
-    <None Include="LightingCalculations.hlsli">
+    <None Include="Content\LightingCalculations.hlsli">
       <Filter>Content</Filter>
     </None>
+    <None Include="test pyramid.obj" />
+    <None Include="Goomba.obj" />
   </ItemGroup>
 </Project>

@@ -1,3 +1,5 @@
+#include "LightingCalculations.hlsli"
+
 // Per-pixel color data passed through the pixel shader.
 struct PixelShaderInput
 {
@@ -9,14 +11,41 @@ struct PixelShaderInput
 };
 
 texture2D baseTexture : register(t0);
-//textureCUBE skybox : register(t0);
+
 
 SamplerState filter : register(s0);
+
+#define NUM_LIGHTS 3
+
+cbuffer LightsBuffer : register(b0)
+{
+	LIGHT lights[NUM_LIGHTS];
+};
 
 // A pass-through function for the (interpolated) color data.
 float4 main(PixelShaderInput input) : SV_TARGET
 {
 	float4 baseColor = baseTexture.Sample(filter, input.texCoord);
-	return baseColor;
-	//return float4(input.wPos, 1.0f);
+	float3 lightColor;
+	lightColor.x = 0;
+	lightColor.y = 0;
+	lightColor.z = 0;
+
+	for (int i = 0; i < NUM_LIGHTS; ++i)
+	{
+		switch (uint(lights[i].position.w))
+		{
+		case 0:
+			lightColor += CalculateDirectionalLighting(lights[i], input.normal);
+			break;
+		case 1:
+			lightColor += CalculatePointLighting(lights[i], input.wPos, input.normal);
+			break;
+		case 2:
+			lightColor += CalculateConeLighting(lights[i], input.wPos, input.normal);
+			break;
+		}
+	}
+
+	return saturate(baseColor *float4(lightColor, 1.0f));
 }
