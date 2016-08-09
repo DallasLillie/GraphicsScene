@@ -34,4 +34,9 @@ namespace GraphicsScene
 	{
 		Light lights[3];
 	};
+
+	struct SpecularBufferCam
+	{
+		DirectX::XMFLOAT4 cameraPosition;
+	};
 }

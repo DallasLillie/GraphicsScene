@@ -46,12 +46,16 @@ namespace GraphicsScene
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_indexFloor;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>	m_vertexShader;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	m_pixelShader;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>	m_pixelShaderN;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>	m_pixelShaderNS;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_constantBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_lightBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_camBuffer;
 
 		// System resources for cube geometry.
 		ModelViewProjectionConstantBuffer	m_constantBufferData;
 		LightConstantBuffer m_lightBufferData;
+		SpecularBufferCam m_specBufferCamData;
 		uint32	m_indexCount;
 		uint32	m_indexFloorCount;
 
@@ -60,24 +64,23 @@ namespace GraphicsScene
 		float	m_degreesPerSecond;
 		bool	m_tracking;
 
-		//Textures
-
+		//TODO:Memory
 		//Samplers
-		ID3D11SamplerState *sampler;
-		ID3D11SamplerState *samplerFloor;
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerFloor;
 
 		//SRVs
-		ID3D11ShaderResourceView *cubeSRV;
-		ID3D11ShaderResourceView *floorSRV;
-		ID3D11ShaderResourceView *goombaSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> cubeSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> floorSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> flatNormalMapSRV;
 
 
 		//Models
 		Model pyramid;
 		Model Goomba;
+		Model GunTurret;
 
-
-		XMFLOAT4X4 world, camera, proj;
+		XMFLOAT4X4 camera;//world , proj;
 	};
 }
 

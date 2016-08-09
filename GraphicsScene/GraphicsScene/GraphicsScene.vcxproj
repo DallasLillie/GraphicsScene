@@ -196,14 +196,17 @@
     <Image Include="Assets\StoreLogo.png" />
     <Image Include="Assets\Wide310x150Logo.scale-200.png" />
     <Image Include="Box_Wood02Dark.dds" />
+    <Image Include="BumpMapFlatColour.dds" />
     <Image Include="Diffuse_Fuzzy.dds" />
     <Image Include="Normal_Fuzzy.dds" />
     <Image Include="SkyboxOcean.dds" />
     <Image Include="tilefloor2_seamless.dds" />
+    <Image Include="T_HeavyTurret_D.dds" />
+    <Image Include="T_HeavyTurret_N.dds" />
+    <Image Include="T_HeavyTurret_S.dds" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
-    <ClInclude Include="Assets\Textures\Box_Wood02Dark.h" />
     <ClInclude Include="Common\DeviceResources.h" />
     <ClInclude Include="DDSTextureLoader.h" />
     <ClInclude Include="GraphicsSceneMain.h" />
@@ -240,6 +243,14 @@
     <None Include="GraphicsScene_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Content\PSNormalMap.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Content\PSNormalSpecular.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+    </FxCompile>
     <FxCompile Include="Content\SamplePixelShader.hlsl">
       <ShaderType>Pixel</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
@@ -257,6 +268,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Goomba.obj">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="GunTurret01.obj">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
       <FileType>Document</FileType>
     </None>

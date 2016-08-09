@@ -62,6 +62,12 @@
     <Image Include="Assets\Wide310x150Logo.scale-200.png">
       <Filter>Assets</Filter>
     </Image>
+    <Filter Include="Assets\Textures">
+      <UniqueIdentifier>{5a348986-c60d-4899-b449-b5f71d0424f8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets\Models">
+      <UniqueIdentifier>{2d820424-ea2a-44c5-9f3e-5dc7b4979033}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
@@ -75,20 +81,39 @@
     <ClInclude Include="GraphicsSceneMain.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="DDSTextureLoader.h" />
-    <ClInclude Include="Assets\Textures\Box_Wood02Dark.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
     <ClInclude Include="Model.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\StoreLogo.png">
       <Filter>Assets</Filter>
     </Image>
-    <Image Include="SkyboxOcean.dds" />
-    <Image Include="Box_Wood02Dark.dds" />
-    <Image Include="tilefloor2_seamless.dds" />
-    <Image Include="Diffuse_Fuzzy.dds" />
-    <Image Include="Normal_Fuzzy.dds" />
+    <Image Include="Box_Wood02Dark.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="BumpMapFlatColour.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="Diffuse_Fuzzy.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="Normal_Fuzzy.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="SkyboxOcean.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="tilefloor2_seamless.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="T_HeavyTurret_N.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="T_HeavyTurret_S.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="T_HeavyTurret_D.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -98,7 +123,22 @@
     <None Include="Content\LightingCalculations.hlsli">
       <Filter>Content</Filter>
     </None>
-    <None Include="test pyramid.obj" />
-    <None Include="Goomba.obj" />
+    <None Include="Goomba.obj">
+      <Filter>Assets\Models</Filter>
+    </None>
+    <None Include="test pyramid.obj">
+      <Filter>Assets\Models</Filter>
+    </None>
+    <None Include="GunTurret01.obj">
+      <Filter>Assets\Models</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Content\PSNormalMap.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\PSNormalSpecular.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

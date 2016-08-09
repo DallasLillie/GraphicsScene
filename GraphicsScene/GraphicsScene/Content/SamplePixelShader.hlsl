@@ -1,20 +1,5 @@
 #include "LightingCalculations.hlsli"
 
-// Per-pixel color data passed through the pixel shader.
-struct PixelShaderInput
-{
-	float4 pos : SV_POSITION;
-	float3 wPos : WPOSITION;
-	float2 texCoord : TEXCOORD;
-	float4 tangent : TANGENT;
-	float3 normal : NORMAL;
-};
-
-texture2D baseTexture : register(t0);
-
-
-SamplerState filter : register(s0);
-
 #define NUM_LIGHTS 3
 
 cbuffer LightsBuffer : register(b0)
@@ -22,10 +7,31 @@ cbuffer LightsBuffer : register(b0)
 	LIGHT lights[NUM_LIGHTS];
 };
 
+cbuffer SpecularBufferCam : register(b1)
+{
+	float4 cameraPosition;
+}
+
+// Per-pixel color data passed through the pixel shader.
+struct PixelShaderInput
+{
+	float4 pos : SV_POSITION;
+	float3 wPos : WPOSITION;
+	float2 texCoord : TEXCOORD;
+	float4 tangent : TANGENT;
+	float4 biTangent :BTANGENT;
+	float3 normal : NORMAL;
+};
+
+texture2D baseTexture : register(t0);
+
+SamplerState filter : register(s0);
+
 // A pass-through function for the (interpolated) color data.
 float4 main(PixelShaderInput input) : SV_TARGET
 {
 	float4 baseColor = baseTexture.Sample(filter, input.texCoord);
+
 	float3 lightColor;
 	lightColor.x = 0;
 	lightColor.y = 0;
@@ -39,13 +45,16 @@ float4 main(PixelShaderInput input) : SV_TARGET
 			lightColor += CalculateDirectionalLighting(lights[i], input.normal);
 			break;
 		case 1:
-			lightColor += CalculatePointLighting(lights[i], input.wPos, input.normal);
+			lightColor += CalculatePointLighting(lights[i], input.wPos);
 			break;
 		case 2:
 			lightColor += CalculateConeLighting(lights[i], input.wPos, input.normal);
 			break;
 		}
+		float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, input.normal, lights[i].color.xyz);
+		lightColor += specHighLight;
 	}
+
 
 	return saturate(baseColor *float4(lightColor, 1.0f));
 }

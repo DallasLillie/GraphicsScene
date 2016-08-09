@@ -13,7 +13,8 @@
 #include <memory>
 #include <agile.h>
 #include <concrt.h>
+#include <atomic>
 #include <vector>
+#include <wchar.h>
 #include <fstream>
 #include "DDSTextureLoader.h"
-#include "Assets\Textures\Box_Wood02Dark.h"

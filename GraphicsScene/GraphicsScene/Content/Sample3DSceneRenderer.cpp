@@ -8,6 +8,81 @@ using namespace GraphicsScene;
 using namespace DirectX;
 using namespace Windows::Foundation;
 
+
+//TODO:Refactor somewhere
+//void CalculateTangents(RobustVertex &A, RobustVertex&B, RobustVertex &C)
+//{
+//	TODO:: Average Tangents
+//	XMFLOAT3 tempVert1 = A.pos;
+//	XMFLOAT3 tempVert2 = B.pos;
+//	XMFLOAT3 tempVert3 = C.pos;
+//	XMVECTOR vertEdge1 = XMVectorSubtract(XMLoadFloat3(&tempVert2), XMLoadFloat3(&tempVert1));
+//	XMVECTOR vertEdge2 = XMVectorSubtract(XMLoadFloat3(&tempVert3), XMLoadFloat3(&tempVert1));
+//	XMFLOAT3 vertEdges1;
+//	XMFLOAT3 vertEdges2;
+//	XMStoreFloat3(&vertEdges1, vertEdge1);
+//	XMStoreFloat3(&vertEdges2, vertEdge2);
+//
+//
+//	XMFLOAT2 texCoord1 = A.texCoords;
+//	XMFLOAT2 texCoord2 = B.texCoords;
+//	XMFLOAT2 texCoord3 = C.texCoords;
+//
+//	XMVECTOR texEdge1 = XMVectorSubtract(XMLoadFloat2(&texCoord2), XMLoadFloat2(&texCoord1));
+//	XMVECTOR texEdge2 = XMVectorSubtract(XMLoadFloat2(&texCoord3), XMLoadFloat2(&texCoord1));
+//	XMFLOAT2 texEdges1;
+//	XMFLOAT2 texEdges2;
+//	XMStoreFloat2(&texEdges1, texEdge1);
+//	XMStoreFloat2(&texEdges2, texEdge2);
+//
+//	float ratio = 1.0f / (texEdges1.x * texEdges2.y - texEdges2.x * texEdges1.y);
+//
+//	XMFLOAT3 uDirection = XMFLOAT3((texEdges2.y * vertEdges1.x - texEdges1.y * vertEdges2.x) * ratio,
+//		(texEdges2.y * vertEdges1.y - texEdges1.y * vertEdges2.y) * ratio,
+//		(texEdges2.y * vertEdges1.z - texEdges1.y * vertEdges2.z) * ratio);
+//	XMFLOAT3 vDirection = XMFLOAT3((texEdges1.x * vertEdges1.x - texEdges2.x * vertEdges2.x) * ratio,
+//		(texEdges1.x * vertEdges1.y - texEdges2.x * vertEdges2.y) * ratio,
+//		(texEdges1.x * vertEdges1.z - texEdges2.x * vertEdges2.z) * ratio);
+//
+//	XMVECTOR uDirec = XMLoadFloat3(&uDirection);
+//	XMVECTOR vDirec = XMLoadFloat3(&vDirection);
+//	uDirec = XMVector3Normalize(uDirec);
+//	vDirec = XMVector3Normalize(vDirec);
+//
+//
+//
+//	XMFLOAT3 dotResult;
+//	XMStoreFloat3(&dotResult, XMVector3Dot(XMLoadFloat3(&A.normal), uDirec));
+//	XMVECTOR tangent;
+//	tangent = uDirec - XMLoadFloat3(&A.normal) * dotResult.y;
+//	tangent = XMVector3Normalize(tangent);
+//	XMStoreFloat4(&A.tangent, tangent);
+//	XMVECTOR cross = XMVector3Cross(XMLoadFloat3(&A.normal), uDirec);
+//	XMVECTOR handedness = vDirec;
+//	XMStoreFloat3(&dotResult, XMVector3Dot(cross, handedness));
+//	A.tangent.w = (dotResult.y < 0.0f) ? -1.0f : 1.0f;
+//
+//
+//	XMStoreFloat3(&dotResult, XMVector3Dot(XMLoadFloat3(&B.normal), uDirec));
+//	tangent = uDirec - XMLoadFloat3(&B.normal) * dotResult.y;
+//	tangent = XMVector3Normalize(tangent);
+//	XMStoreFloat4(&B.tangent, tangent);
+//	cross = XMVector3Cross(XMLoadFloat3(&B.normal), uDirec);
+//	handedness = vDirec;
+//	XMStoreFloat3(&dotResult, XMVector3Dot(cross, handedness));
+//	B.tangent.w = (dotResult.y < 0.0f) ? -1.0f : 1.0f;
+//
+//
+//	XMStoreFloat3(&dotResult, XMVector3Dot(XMLoadFloat3(&C.normal), uDirec));
+//	tangent = uDirec - XMLoadFloat3(&C.normal) * dotResult.y;
+//	tangent = XMVector3Normalize(tangent);
+//	XMStoreFloat4(&C.tangent, tangent);
+//	cross = XMVector3Cross(XMLoadFloat3(&C.normal), uDirec);
+//	handedness = vDirec;
+//	XMStoreFloat3(&dotResult, XMVector3Dot(cross, handedness));
+//	C.tangent.w = (dotResult.y < 0.0f) ? -1.0f : 1.0f;
+//}
+
 // Loads vertex and pixel shaders from files and instantiates the cube geometry.
 Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceResources>& deviceResources) :
 	m_loadingComplete(false),
@@ -69,14 +144,9 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 
 using namespace Windows::UI::Core;
 extern CoreWindow^ gwindow;
-#include <atomic>
 extern bool mouse_move;
 extern float diffx;
 extern float diffy;
-extern bool w_down;
-extern bool a_down;
-extern bool s_down;
-extern bool d_down;
 extern bool left_click;
 
 extern char buttons[256];
@@ -84,6 +154,7 @@ extern char buttons[256];
 // Called once per frame, rotates the cube and calculates the model and view matrices.
 void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 {
+	//TODO: what's this tracking
 	if (!m_tracking)
 	{
 		// Convert degrees to radians, then convert seconds to rotation angle
@@ -157,6 +228,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 		{
 			XMVECTOR pos = newcamera.r[3];
 			newcamera.r[3] = XMLoadFloat4(&XMFLOAT4(0, 0, 0, 1));
+			newcamera = XMMatrixTranslation(-3, 0.5, -3)* newcamera;
 			newcamera = XMMatrixRotationX(diffy*0.01f) * newcamera * XMMatrixRotationY(diffx*0.01f);
 			newcamera.r[3] = pos;
 		}
@@ -166,7 +238,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 
 	//HEADLamp Calculations
 	XMMATRIX headLamp = XMMatrixIdentity();
-	headLamp = XMMatrixMultiply(XMMatrixTranslation(0.0f, 0.5f, 0.0f),headLamp);
+	headLamp = XMMatrixMultiply(XMMatrixTranslation(0.0f, 0.25f, 0.0f),headLamp);
 	headLamp = XMMatrixMultiply(XMMatrixRotationX(XMConvertToRadians(10)), headLamp);
 	headLamp = XMMatrixMultiply(headLamp, newcamera);
 
@@ -175,20 +247,43 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	m_lightBufferData.lights[2].position.w = 2;
 
 
+	XMMATRIX pointLight = XMMatrixIdentity();
+	XMVECTOR lightpos = XMLoadFloat4(&m_lightBufferData.lights[1].position);
+	pointLight = XMMatrixRotationY(XMConvertToRadians(2));
+	//pointLight = XMMatrixTranspose(pointLight);
+	lightpos = XMVector4Transform(lightpos, pointLight);
+	XMStoreFloat4(&m_lightBufferData.lights[1].position, lightpos);
+	m_lightBufferData.lights[1].position.w = 1;
+
+
+	XMMATRIX directionalLight = XMMatrixIdentity();
+	XMVECTOR lightNorm = XMLoadFloat4(&m_lightBufferData.lights[0].normal);
+	directionalLight = XMMatrixRotationZ(XMConvertToRadians(0.5));
+	//directionalLight = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(1)), directionalLight);
+	directionalLight = XMMatrixTranspose(directionalLight);
+	lightNorm = XMVector4Transform(lightNorm, directionalLight);
+	XMStoreFloat4(&m_lightBufferData.lights[0].normal, lightNorm);
+
+	m_specBufferCamData.cameraPosition.x = camera._41;
+	m_specBufferCamData.cameraPosition.y = camera._42;
+	m_specBufferCamData.cameraPosition.z = camera._43;
+	m_specBufferCamData.cameraPosition.w = camera._44;
+
 	/*Be sure to inverse the camera & Transpose because they don't use pragma pack row major in shaders*/
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, newcamera)));
 
 	mouse_move = false;/*Reset*/
 }
 
+//TODO: make all rotations, translate and scale
 // Rotate the 3D cube model a set amount of radians.
 void Sample3DSceneRenderer::Rotate(float radians)
 {
-	//TODO: mirror translate function
 	// Prepare to pass the updated model matrix to the shader
 	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixRotationY(radians)));
 }
 
+//TODO:Fix
 void Sample3DSceneRenderer::Translate(float xOffset,float yOffset, float zOffset)
 {
 	// Prepare to pass the updated model matrix to the shader
@@ -300,12 +395,18 @@ void Sample3DSceneRenderer::Render()
 		nullptr
 	);
 
+	context->PSSetConstantBuffers1(
+		1,
+		1,
+		m_camBuffer.GetAddressOf(),
+		nullptr,
+		nullptr
+	);
 
-	//ID3D11ShaderResourceView *SRV[]{ cubeSRV };
-	ID3D11ShaderResourceView *SRV[]{ cubeSRV,floorSRV,goombaSRV };
-	context->PSSetShaderResources(0, 1, &SRV[0]);
 
-	context->PSSetSamplers(0, 1, &sampler);
+	context->PSSetShaderResources(0, 1, cubeSRV.GetAddressOf());
+
+	context->PSSetSamplers(0, 1, sampler.GetAddressOf());
 
 	// Draw the objects.
 	context->DrawIndexed(
@@ -313,13 +414,6 @@ void Sample3DSceneRenderer::Render()
 		0,
 		0
 		);
-
-
-
-
-
-
-
 
 	XMMATRIX model = XMMatrixIdentity();
 	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(model));
@@ -335,8 +429,20 @@ void Sample3DSceneRenderer::Render()
 		0
 	);
 
-	//ID3D11ShaderResourceView *SRV2[]{ floorSRV };
-	context->PSSetShaderResources(0, 1, &SRV[1]);
+
+
+
+
+	//DRAWFLOOR
+	context->PSSetConstantBuffers1(
+		0,
+		1,
+		m_lightBuffer.GetAddressOf(),
+		nullptr,
+		nullptr
+	);
+
+	context->PSSetShaderResources(0, 1, floorSRV.GetAddressOf());
 
 	stride = sizeof(RobustVertex);
 	offset = 0;
@@ -354,7 +460,8 @@ void Sample3DSceneRenderer::Render()
 		0
 	);
 
-	context->PSSetSamplers(0, 1, &samplerFloor);
+
+	context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
 
 
 	// Draw the objects.
@@ -366,10 +473,19 @@ void Sample3DSceneRenderer::Render()
 
 
 
+	//DRAWPYRAMID
+	context->PSSetConstantBuffers1(
+		0,
+		1,
+		m_lightBuffer.GetAddressOf(),
+		nullptr,
+		nullptr
+	);
 
 	model = XMMatrixIdentity();
-	model = XMMatrixMultiply(XMMatrixTranslation(1.0f, 1.0f, 1.0f), model);
+	model = XMMatrixMultiply(XMMatrixTranslation(1.0f, 0.5f, 1.0f), model);
 	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(model));
+
 
 	// Prepare the constant buffer to send it to the graphics device.
 	context->UpdateSubresource1(
@@ -383,62 +499,178 @@ void Sample3DSceneRenderer::Render()
 	);
 
 	//ID3D11ShaderResourceView *SRV2[]{ floorSRV };
-	context->PSSetShaderResources(0, 1, &SRV[0]);
+	context->PSSetShaderResources(0, 1, floorSRV.GetAddressOf());
 
 	stride = sizeof(RobustVertex);
 	offset = 0;
 	context->IASetVertexBuffers(
 		0,
 		1,
-		pyramid.m_vertexBuffer.GetAddressOf(),
+		pyramid.GetVertexBuffer().GetAddressOf(),
 		&stride,
 		&offset
 	);
 
 	context->IASetIndexBuffer(
-		pyramid.m_indexBuffer.Get(),
+		pyramid.GetIndexBuffer().Get(),
 		DXGI_FORMAT_R32_UINT, // Each index is one 16-bit unsigned integer (short).
 		0
 	);
 
-	context->PSSetSamplers(0, 1, &samplerFloor);
-
+	context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
 
 	// Draw the objects.
 	context->DrawIndexed(
-		pyramid.m_indexCount,
+		pyramid.GetIndices().size(),
 		0,
 		0
 	);
 
 
 
+	//Draw Goomba
+	model = XMMatrixIdentity();
+	model = XMMatrixMultiply(XMMatrixTranslation(1.0f, 0.75f, 1.0f), model);
+	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(model));
 
+	// Attach our pixel shader.
+	context->PSSetShader(
+		m_pixelShaderN.Get(),
+		nullptr,
+		0
+	);
 
-	context->PSSetShaderResources(0, 1, &SRV[2]);
+	context->PSSetConstantBuffers1(
+		0,
+		1,
+		m_lightBuffer.GetAddressOf(),
+		nullptr,
+		nullptr
+	);
+
+	// Prepare the constant buffer to send it to the graphics device.
+	context->UpdateSubresource1(
+		m_constantBuffer.Get(),
+		0,
+		NULL,
+		&m_constantBufferData,
+		0,
+		0,
+		0
+	);
+
+	context->PSSetShaderResources(0, 1, Goomba.GetSRV().GetAddressOf());
+	context->PSSetShaderResources(1, 1, Goomba.GetNormalMap().GetAddressOf());
 
 	stride = sizeof(RobustVertex);
 	offset = 0;
 	context->IASetVertexBuffers(
 		0,
 		1,
-		Goomba.m_vertexBuffer.GetAddressOf(),
+		Goomba.GetVertexBuffer().GetAddressOf(),
 		&stride,
 		&offset
 	);
 
+	//TODO: set all buffers to be unsigned shorts
 	context->IASetIndexBuffer(
-		Goomba.m_indexBuffer.Get(),
+		Goomba.GetIndexBuffer().Get(),
 		DXGI_FORMAT_R32_UINT, // Each index is one 16-bit unsigned integer (short).
 		0
 	);
 
-	context->PSSetSamplers(0, 1, &samplerFloor);
+	context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
 
 
 	// Draw the objects.
 	context->DrawIndexed(
-		Goomba.m_indexCount,
+		Goomba.GetIndices().size(),
+		0,
+		0
+	);
+
+
+
+
+
+	//Draw Gunturret
+	model = XMMatrixIdentity();
+	model = XMMatrixMultiply(XMMatrixTranslation(-1.0f, 0.0f, -1.0f), model);
+	model = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(-45)), model);
+	model = XMMatrixMultiply(XMMatrixScaling(0.1f,0.1f,0.1f), model);
+	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(model));
+
+	// Attach our pixel shader.
+	context->PSSetShader(
+		m_pixelShaderNS.Get(),
+		nullptr,
+		0
+	);
+
+	context->PSSetConstantBuffers1(
+		0,
+		1,
+		m_lightBuffer.GetAddressOf(),
+		nullptr,
+		nullptr
+	);
+
+	//context->PSSetConstantBuffers1(
+	//	1,
+	//	1,
+	//	m_camBuffer.GetAddressOf(),
+	//	nullptr,
+	//	nullptr
+	//);
+
+	// Prepare the constant buffer to send it to the graphics device.
+	context->UpdateSubresource1(
+		m_constantBuffer.Get(),
+		0,
+		NULL,
+		&m_constantBufferData,
+		0,
+		0,
+		0
+	);
+
+	context->UpdateSubresource1(
+		m_camBuffer.Get(),
+		0,
+		NULL,
+		&m_specBufferCamData,
+		0,
+		0,
+		0
+	);
+
+	context->PSSetShaderResources(0, 1, GunTurret.GetSRV().GetAddressOf());
+	context->PSSetShaderResources(1, 1, GunTurret.GetNormalMap().GetAddressOf());
+	context->PSSetShaderResources(2, 1, GunTurret.GetSpecularMap().GetAddressOf());
+
+	stride = sizeof(RobustVertex);
+	offset = 0;
+	context->IASetVertexBuffers(
+		0,
+		1,
+		GunTurret.GetVertexBuffer().GetAddressOf(),
+		&stride,
+		&offset
+	);
+
+	//TODO: set all buffers to be unsigned shorts
+	context->IASetIndexBuffer(
+		GunTurret.GetIndexBuffer().Get(),
+		DXGI_FORMAT_R32_UINT, // Each index is one 16-bit unsigned integer (short).
+		0
+	);
+
+	context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
+
+
+	// Draw the objects.
+	context->DrawIndexed(
+		GunTurret.GetIndices().size(),
 		0,
 		0
 	);
@@ -449,6 +681,8 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	// Load shaders asynchronously.
 	auto loadVSTask = DX::ReadDataAsync(L"SampleVertexShader.cso");
 	auto loadPSTask = DX::ReadDataAsync(L"SamplePixelShader.cso");
+	auto loadPSNTask = DX::ReadDataAsync(L"PSNormalMap.cso");
+	auto loadPSNSTask = DX::ReadDataAsync(L"PSNormalSpecular.cso");
 
 	// After the vertex shader file is loaded, create the shader and input layout.
 	auto createVSTask = loadVSTask.then([this](const std::vector<byte>& fileData) {
@@ -510,41 +744,73 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		);
 	});
 
+	auto createPSNTask = loadPSNTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreatePixelShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				&m_pixelShaderN
+			)
+		);
+	});
+
+	auto createPSNSTask = loadPSNSTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreatePixelShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				&m_pixelShaderNS
+			)
+		);
+
+		CD3D11_BUFFER_DESC camBufferDesc(sizeof(SpecularBufferCam), D3D11_BIND_CONSTANT_BUFFER);
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateBuffer(
+				&camBufferDesc,
+				nullptr,
+				&m_camBuffer
+			)
+		);
+	});
+
+
 	// Once both shaders are loaded, create the mesh.
-	auto createCubeTask = (createPSTask && createVSTask).then([this] () {
+	auto createCubeTask = (createPSTask && createVSTask && createPSNTask && createPSNSTask).then([this] () {
 
 		// Load mesh vertices. Each vertex has a position and a color.
 		static const RobustVertex cubeVertices[] = 
 		{
 			//LEFT
-			{XMFLOAT3(-0.5f, -0.5f, -0.5f),XMFLOAT2(1.0f,1.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f), XMFLOAT3(-1.0f,0.0f,0.0f)},
-			{XMFLOAT3(-0.5f, -0.5f,  0.5f),XMFLOAT2(0.0f,1.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(-1.0f,0.0f,0.0f)},
-			{XMFLOAT3(-0.5f,  0.5f, -0.5f),XMFLOAT2(1.0f,0.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(-1.0f,0.0f,0.0f)},
-			{ XMFLOAT3(-0.5f, 0.5f, 0.5f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(-1.0f,0.0f,0.0f) },
+			{XMFLOAT3(-0.5f, -0.5f, -0.5f),XMFLOAT2(1.0f,1.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f), XMFLOAT3(-1.0f,0.0f,0.0f)},
+			{XMFLOAT3(-0.5f, -0.5f,  0.5f),XMFLOAT2(0.0f,1.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(-1.0f,0.0f,0.0f)},
+			{XMFLOAT3(-0.5f,  0.5f, -0.5f),XMFLOAT2(1.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(-1.0f,0.0f,0.0f)},
+			{ XMFLOAT3(-0.5f, 0.5f, 0.5f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(-1.0f,0.0f,0.0f) },
 
 			//BACK
-			{ XMFLOAT3(-0.5f, -0.5f,  0.5f),XMFLOAT2(1.0f,1.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,0.0f,1.0f) },
-			{ XMFLOAT3(0.5f, -0.5f,  0.5f),XMFLOAT2(0.0f,1.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,0.0f,1.0f) },
-			{ XMFLOAT3(-0.5f, 0.5f, 0.5f), XMFLOAT2(1.0f,0.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,0.0f,1.0f) },
-			{ XMFLOAT3(0.5f,  0.5f,  0.5f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,0.0f,1.0f) },
+			{ XMFLOAT3(-0.5f, -0.5f,  0.5f),XMFLOAT2(1.0f,1.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,0.0f,1.0f) },
+			{ XMFLOAT3(0.5f, -0.5f,  0.5f),XMFLOAT2(0.0f,1.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,0.0f,1.0f) },
+			{ XMFLOAT3(-0.5f, 0.5f, 0.5f), XMFLOAT2(1.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,0.0f,1.0f) },
+			{ XMFLOAT3(0.5f,  0.5f,  0.5f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,0.0f,1.0f) },
 
 			//RIGHT
-			{ XMFLOAT3(0.5f, -0.5f,  0.5f), XMFLOAT2(1.0f,1.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(1.0f,0.0f,0.0f) },
-			{ XMFLOAT3(0.5f, -0.5f, -0.5f), XMFLOAT2(0.0f,1.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(1.0f,0.0f,0.0f) },
-			{ XMFLOAT3(0.5f,  0.5f,  0.5f), XMFLOAT2(1.0f,0.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(1.0f,0.0f,0.0f) },
-			{ XMFLOAT3(0.5f,  0.5f, -0.5f), XMFLOAT2(0.0f,0.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(1.0f,0.0f,0.0f) },
+			{ XMFLOAT3(0.5f, -0.5f,  0.5f), XMFLOAT2(1.0f,1.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(1.0f,0.0f,0.0f) },
+			{ XMFLOAT3(0.5f, -0.5f, -0.5f), XMFLOAT2(0.0f,1.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(1.0f,0.0f,0.0f) },
+			{ XMFLOAT3(0.5f,  0.5f,  0.5f), XMFLOAT2(1.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(1.0f,0.0f,0.0f) },
+			{ XMFLOAT3(0.5f,  0.5f, -0.5f), XMFLOAT2(0.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(1.0f,0.0f,0.0f) },
 
 			//FRONT
-			{ XMFLOAT3(-0.5f, -0.5f, -0.5f),XMFLOAT2(0.0f,1.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,0.0f,-1.0f) },
-			{ XMFLOAT3(-0.5f,  0.5f, -0.5f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,0.0f,-1.0f) },
-			{ XMFLOAT3(0.5f, -0.5f, -0.5f), XMFLOAT2(1.0f,1.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,0.0f,-1.0f) },
-			{ XMFLOAT3(0.5f,  0.5f, -0.5f), XMFLOAT2(1.0f,0.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,0.0f,-1.0f) },
+			{ XMFLOAT3(-0.5f, -0.5f, -0.5f),XMFLOAT2(0.0f,1.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,0.0f,-1.0f) },
+			{ XMFLOAT3(-0.5f,  0.5f, -0.5f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,0.0f,-1.0f) },
+			{ XMFLOAT3(0.5f, -0.5f, -0.5f), XMFLOAT2(1.0f,1.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,0.0f,-1.0f) },
+			{ XMFLOAT3(0.5f,  0.5f, -0.5f), XMFLOAT2(1.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,0.0f,-1.0f) },
 
 			//TOP
-			{ XMFLOAT3(-0.5f,  0.5f, -0.5f),XMFLOAT2(0.0f,1.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-			{ XMFLOAT3(-0.5f,  0.5f,  0.5f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-			{ XMFLOAT3(0.5f,  0.5f, -0.5f),XMFLOAT2(1.0f,1.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-			{ XMFLOAT3(0.5f,  0.5f, 0.5f), XMFLOAT2(1.0f,0.0f) ,XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,1.0f,0.0f)},
+			{ XMFLOAT3(-0.5f,  0.5f, -0.5f),XMFLOAT2(0.0f,1.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
+			{ XMFLOAT3(-0.5f,  0.5f,  0.5f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
+			{ XMFLOAT3(0.5f,  0.5f, -0.5f),XMFLOAT2(1.0f,1.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
+			{ XMFLOAT3(0.5f,  0.5f, 0.5f), XMFLOAT2(1.0f,0.0f) ,XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f)},
 
 
 			//BOTTOM
@@ -608,136 +874,79 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 				)
 			);
 
-
-
-
-		//FloorCreation
-		{
-			RobustVertex floorVertices[] =
-			{
-				{ XMFLOAT3(-5.0f,  0.0f, -5.0f),XMFLOAT2(0.0f,10.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-				{ XMFLOAT3(-5.0f,  0.0f,  5.0f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-				{ XMFLOAT3(5.0f,  0.0f, -5.0f),XMFLOAT2(10.0f,10.0f),XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-				{ XMFLOAT3(5.0f,  0.0f, 5.0f), XMFLOAT2(10.0f,0.0f) ,XMFLOAT4(0.0f,0.0f,0.0f,0.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-			};
-
-
-
-
-			vertexBufferData = { 0 };
-			vertexBufferData.pSysMem = floorVertices;
-			vertexBufferData.SysMemPitch = 0;
-			vertexBufferData.SysMemSlicePitch = 0;
-			vertexBufferDesc = CD3D11_BUFFER_DESC(sizeof(floorVertices), D3D11_BIND_VERTEX_BUFFER);
-			DX::ThrowIfFailed(
-				m_deviceResources->GetD3DDevice()->CreateBuffer(
-					&vertexBufferDesc,
-					&vertexBufferData,
-					&m_vertexFloor
-				)
-			);
-
-			unsigned short floorIndices[] =
-			{
-				0,1,2,
-				1,3,2
-			};
-
-			m_indexFloorCount = ARRAYSIZE(floorIndices);
-
-			indexBufferData = { 0 };
-			indexBufferData.pSysMem = floorIndices;
-			indexBufferData.SysMemPitch = 0;
-			indexBufferData.SysMemSlicePitch = 0;
-			indexBufferDesc = CD3D11_BUFFER_DESC(sizeof(floorIndices), D3D11_BIND_INDEX_BUFFER);
-			DX::ThrowIfFailed(
-				m_deviceResources->GetD3DDevice()->CreateBuffer(
-					&indexBufferDesc,
-					&indexBufferData,
-					&m_indexFloor
-				)
-			);
-
-		}
-
 		HRESULT result;
-
-		//PyramidModel
-		{
-			pyramid.loadOBJ("test pyramid.obj");
-			//pyramid.CreateVertexBuffer();
-			//pyramid.CreateIndexBuffer();
-
-			vertexBufferData = { 0 };
-			vertexBufferData.pSysMem = pyramid.m_vertices.data();
-			vertexBufferData.SysMemPitch = 0;
-			vertexBufferData.SysMemSlicePitch = 0;
-			vertexBufferDesc = CD3D11_BUFFER_DESC(pyramid.m_vertices.size() * sizeof(RobustVertex), D3D11_BIND_VERTEX_BUFFER);
-			result = m_deviceResources->GetD3DDevice()->CreateBuffer(
-				&vertexBufferDesc,
-				&vertexBufferData,
-				pyramid.m_vertexBuffer.GetAddressOf()
-			);
-
-			pyramid.m_indexCount = pyramid.m_indices.size();
-
-			indexBufferData = { 0 };
-			indexBufferData.pSysMem = pyramid.m_indices.data();
-			indexBufferData.SysMemPitch = 0;
-			indexBufferData.SysMemSlicePitch = 0;
-			indexBufferDesc = CD3D11_BUFFER_DESC(pyramid.m_indices.size() * sizeof(unsigned int), D3D11_BIND_INDEX_BUFFER);
-			result =
-				m_deviceResources->GetD3DDevice()->CreateBuffer(
-					&indexBufferDesc,
-					&indexBufferData,
-					pyramid.m_indexBuffer.GetAddressOf()
-				);
-
-		}
-
-		//GoombaModel
-		{
-			Goomba.loadOBJ("Goomba.obj");
-			//Goomba.CreateVertexBuffer();
-			//Goomba.CreateIndexBuffer();
-
-			vertexBufferData = { 0 };
-			vertexBufferData.pSysMem = Goomba.m_vertices.data();
-			vertexBufferData.SysMemPitch = 0;
-			vertexBufferData.SysMemSlicePitch = 0;
-			vertexBufferDesc = CD3D11_BUFFER_DESC(Goomba.m_vertices.size() * sizeof(RobustVertex), D3D11_BIND_VERTEX_BUFFER);
-			result = m_deviceResources->GetD3DDevice()->CreateBuffer(
-				&vertexBufferDesc,
-				&vertexBufferData,
-				Goomba.m_vertexBuffer.GetAddressOf()
-			);
-
-			Goomba.m_indexCount = Goomba.m_indices.size();
-
-			indexBufferData = { 0 };
-			indexBufferData.pSysMem = Goomba.m_indices.data();
-			indexBufferData.SysMemPitch = 0;
-			indexBufferData.SysMemSlicePitch = 0;
-			indexBufferDesc = CD3D11_BUFFER_DESC(Goomba.m_indices.size() * sizeof(unsigned int), D3D11_BIND_INDEX_BUFFER);
-			result =
-				m_deviceResources->GetD3DDevice()->CreateBuffer(
-					&indexBufferDesc,
-					&indexBufferData,
-					Goomba.m_indexBuffer.GetAddressOf()
-				);
-
-		}
-
-
-		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Diffuse_Fuzzy.dds",
-			NULL, &goombaSRV);
 
 		result =  CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Box_Wood02Dark.dds",
 								NULL, &cubeSRV);
+		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"BumpMapFlatColour.dds",
+			NULL, &flatNormalMapSRV);
 
-		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"tilefloor2_seamless.dds",
+	});
+
+	auto createFloorTask = (createPSTask && createVSTask && createPSNTask && createPSNSTask).then([this]()
+	{
+		RobustVertex floorVertices[] =
+		{
+			{ XMFLOAT3(-5.0f,  0.0f, -5.0f),XMFLOAT2(0.0f,10.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
+			{ XMFLOAT3(-5.0f,  0.0f,  5.0f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
+			{ XMFLOAT3(5.0f,  0.0f, -5.0f),XMFLOAT2(10.0f,10.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
+			{ XMFLOAT3(5.0f,  0.0f, 5.0f), XMFLOAT2(10.0f,0.0f) ,XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
+		};
+
+		unsigned short floorIndices[] =
+		{
+			0,1,2,
+			1,3,2
+		};
+
+		m_indexFloorCount = ARRAYSIZE(floorIndices);
+
+		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
+		vertexBufferData.pSysMem = floorVertices;
+		vertexBufferData.SysMemPitch = 0;
+		vertexBufferData.SysMemSlicePitch = 0;
+		CD3D11_BUFFER_DESC vertexBufferDesc = CD3D11_BUFFER_DESC(sizeof(floorVertices), D3D11_BIND_VERTEX_BUFFER);
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateBuffer(
+				&vertexBufferDesc,
+				&vertexBufferData,
+				&m_vertexFloor
+			)
+		);
+
+
+		D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
+		indexBufferData.pSysMem = floorIndices;
+		indexBufferData.SysMemPitch = 0;
+		indexBufferData.SysMemSlicePitch = 0;
+		CD3D11_BUFFER_DESC indexBufferDesc = CD3D11_BUFFER_DESC(sizeof(floorIndices), D3D11_BIND_INDEX_BUFFER);
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateBuffer(
+				&indexBufferDesc,
+				&indexBufferData,
+				&m_indexFloor
+			)
+		);
+		HRESULT result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"tilefloor2_seamless.dds",
 			NULL, &floorSRV);
 	});
+
+	//TODO: make a loop through all models in a models array, make an array of modefilenames and texturefilenames that is read from a file
+	auto createPyramidTask = (createPSTask && createVSTask && createPSNTask && createPSNSTask).then([this]()
+	{
+		pyramid.CreateModel(m_deviceResources, "test pyramid.obj", L"Box_Wood02Dark.dds");
+	});
+
+	auto createGoombaTask = (createPSTask && createVSTask && createPSNTask && createPSNSTask).then([this]()
+	{
+		Goomba.CreateModel(m_deviceResources, "Goomba.obj", L"Diffuse_Fuzzy.dds", L"Normal_Fuzzy.dds");
+	});
+
+	auto createGunTurretTask = (createPSTask && createVSTask && createPSNTask && createPSNSTask).then([this]()
+	{
+		GunTurret.CreateModel(m_deviceResources, "GunTurret01.obj", L"T_HeavyTurret_D.dds", L"T_HeavyTurret_N.dds",L"T_HeavyTurret_S.dds");
+	});
+	//TODO: Refactor all this creation code to be done with simple functions
 
 	//Texture Filter
 	CD3D11_SAMPLER_DESC samplerDesc = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
@@ -756,7 +965,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &samplerFloor);
 
 	// Once the cube is loaded, the object is ready to be rendered.
-	createCubeTask.then([this] () {
+	(createCubeTask && createPyramidTask && createGoombaTask && createFloorTask &&createGunTurretTask).then([this] () {
 		m_loadingComplete = true;
 	});
 }
@@ -767,12 +976,24 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	m_vertexShader.Reset();
 	m_inputLayout.Reset();
 	m_pixelShader.Reset();
+	m_pixelShaderN.Reset();
+	m_pixelShaderNS.Reset();
 	m_constantBuffer.Reset();
 	m_lightBuffer.Reset();
+	m_camBuffer.Reset();
 	m_vertexBuffer.Reset();
 	m_indexBuffer.Reset();
 	m_indexFloor.Reset();
 	m_vertexFloor.Reset();
+	sampler.Reset();
+	samplerFloor.Reset();
+	cubeSRV.Reset();
+	floorSRV.Reset();
+	flatNormalMapSRV.Reset();
+
+	Goomba.Release();
+	pyramid.Release();
+	GunTurret.Release();
 }
 
 Light CreateDirectionalLight(XMFLOAT4 direction, XMFLOAT4 color)
@@ -811,5 +1032,6 @@ void Sample3DSceneRenderer::InitializeLights()
 {
 	m_lightBufferData.lights[0] = CreateDirectionalLight(XMFLOAT4(-0.577,-0.577,-0.577,0.0f), (XMFLOAT4)Colors::White);
 	m_lightBufferData.lights[1] = CreatePointLight(XMFLOAT4(0.0f,0.0f,-1.0f,0.0f), (XMFLOAT4)Colors::OrangeRed,2.5f);
+	//TODO: better way to turn on and off spotlight
 	m_lightBufferData.lights[2] = CreateSpotLight(XMFLOAT4(-0.75f,0.0f,0.0f,0.0f),XMFLOAT4(1,0,0,0.0f), (XMFLOAT4)Colors::White, 1);
 }
