@@ -73,7 +73,7 @@ namespace GraphicsScene
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> cubeSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> floorSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> flatNormalMapSRV;
-
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> SkyCubeSRV;
 
 		//Models
 		Model pyramid;

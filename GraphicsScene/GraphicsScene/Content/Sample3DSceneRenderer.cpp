@@ -8,7 +8,6 @@ using namespace GraphicsScene;
 using namespace DirectX;
 using namespace Windows::Foundation;
 
-
 //TODO:Refactor somewhere
 //void CalculateTangents(RobustVertex &A, RobustVertex&B, RobustVertex &C)
 //{
@@ -946,6 +945,12 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	{
 		GunTurret.CreateModel(m_deviceResources, "GunTurret01.obj", L"T_HeavyTurret_D.dds", L"T_HeavyTurret_N.dds",L"T_HeavyTurret_S.dds");
 	});
+
+	auto createSkyCubeTask = (createPSTask && createVSTask && createPSNTask && createPSNSTask).then([this]()
+	{
+		HRESULT result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"SkyboxOcean.dds",
+			NULL, &SkyCubeSRV);
+	});
 	//TODO: Refactor all this creation code to be done with simple functions
 
 	//Texture Filter
@@ -990,6 +995,7 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	cubeSRV.Reset();
 	floorSRV.Reset();
 	flatNormalMapSRV.Reset();
+	SkyCubeSRV.Reset();
 
 	Goomba.Release();
 	pyramid.Release();

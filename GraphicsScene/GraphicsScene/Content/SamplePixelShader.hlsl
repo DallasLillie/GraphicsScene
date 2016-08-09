@@ -24,6 +24,7 @@ struct PixelShaderInput
 };
 
 texture2D baseTexture : register(t0);
+TextureCube skyBox : register(t1);
 
 SamplerState filter : register(s0);
 
