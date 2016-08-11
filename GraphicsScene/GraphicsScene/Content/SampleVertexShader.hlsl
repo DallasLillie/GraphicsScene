@@ -19,7 +19,7 @@ struct VertexShaderInput
 };
 
 // Per-pixel color data passed through the pixel shader.
-struct PixelShaderInput
+struct VertexShaderOutput
 {
 	float4 pos : SV_POSITION;
 	float3 wPos : WPOSITION;
@@ -30,9 +30,9 @@ struct PixelShaderInput
 };
 
 // Simple shader to do vertex processing on the GPU.
-PixelShaderInput main(VertexShaderInput input)
+VertexShaderOutput main(VertexShaderInput input)
 {
-	PixelShaderInput output = (PixelShaderInput)0;
+	VertexShaderOutput output = (VertexShaderOutput)0;
 	float4 pos = float4(input.pos, 1.0f);
 	float4 normal = float4(input.normal, 0.0f);
 	float4 tangent = input.tangent;
@@ -40,7 +40,8 @@ PixelShaderInput main(VertexShaderInput input)
 	// Transform the vertex position into projected space.
 	pos = mul(pos, model);
 	normal = mul(normal, model);
-	output.tangent = mul(float4(tangent.xyz*tangent.w, 0.0f), model);
+	output.tangent = mul(float4(tangent.xyz, 0.0f), model);
+	//output.tangent = mul(float4(tangent.xyz*tangent.w, 0.0f), model);
 	output.biTangent = mul(float4(cross(normal.xyz, tangent.xyz), 0.0f), model);
 
 	output.wPos = pos;

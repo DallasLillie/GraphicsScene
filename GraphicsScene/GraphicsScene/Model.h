@@ -17,6 +17,7 @@ class Model
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_NormalMapSRV;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_SpecularMapSRV;
 
+
 	const char* m_modelFile;
 	const wchar_t* m_textureFile;
 	const wchar_t* m_normalMapFile;
@@ -24,6 +25,8 @@ class Model
 
 	std::vector<RobustVertex> m_vertices;
 	std::vector<unsigned int> m_indices;
+
+	XMFLOAT4X4 m_worldMatrix;
 public:
 	//Constructors
 	Model();
@@ -47,6 +50,7 @@ public:
 	void SetSpecularMapFile(const wchar_t * _specularMapFile);
 	void SetVerts(const std::vector<RobustVertex> _vertices);
 	void SetIndices(const std::vector<unsigned int> _indices);
+	void SetWorldMatrix(const XMFLOAT4X4 _worldMatrix);
 
 	//Accessors
 	const Microsoft::WRL::ComPtr<ID3D11Buffer>& GetVertexBuffer() { return m_vertexBuffer; }
@@ -61,6 +65,8 @@ public:
 	const wchar_t* GetSpecularMapFile() const { return m_specularMapFile; }
 	const std::vector<RobustVertex>& GetVerts() const { return m_vertices; }
 	const std::vector<unsigned int>& GetIndices() const { return m_indices; }
+	const XMFLOAT4X4& GetWorldMatrix() const { return m_worldMatrix; }
+	XMFLOAT4X4& GetWorldMatrix() { return m_worldMatrix; }
 
 	void CreateModel();
 	void CreateModel(const char * _filename, const wchar_t * _texturename);

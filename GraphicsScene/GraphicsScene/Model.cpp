@@ -108,6 +108,11 @@ void Model::SetIndices(std::vector<unsigned int> _indices)
 	m_indices = _indices;
 }
 
+void Model::SetWorldMatrix(const XMFLOAT4X4 _worldMatrix)
+{
+	m_worldMatrix = _worldMatrix;
+}
+
 void Model::CreateModel()
 {
 	this->LoadOBJ();
@@ -235,6 +240,7 @@ bool Model::LoadOBJ()
 		{
 			XMFLOAT3 vertex;
 			fscanf_s(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
+			vertex.x *= -1;
 			vertices.push_back(vertex);
 		}
 		else if (strcmp(lineHeader, "vt") == 0)
@@ -248,6 +254,7 @@ bool Model::LoadOBJ()
 		{
 			XMFLOAT3 normal;
 			fscanf_s(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z);
+			normal.x *= -1;
 			normals.push_back(normal);
 		}
 		else if (strcmp(lineHeader, "f") == 0)
@@ -261,14 +268,14 @@ bool Model::LoadOBJ()
 				return false;
 			}
 			vertexIndices.push_back(vertexIndex[0]);
-			vertexIndices.push_back(vertexIndex[1]);
 			vertexIndices.push_back(vertexIndex[2]);
+			vertexIndices.push_back(vertexIndex[1]);
 			uvIndices.push_back(uvIndex[0]);
-			uvIndices.push_back(uvIndex[1]);
 			uvIndices.push_back(uvIndex[2]);
+			uvIndices.push_back(uvIndex[1]);
 			normalIndices.push_back(normalIndex[0]);
-			normalIndices.push_back(normalIndex[1]);
 			normalIndices.push_back(normalIndex[2]);
+			normalIndices.push_back(normalIndex[1]);
 		}
 	}
 
@@ -287,8 +294,10 @@ bool Model::LoadOBJ()
 		XMFLOAT3 norm = normals[normalIndex - 1];
 		tempVertex.normal = norm;
 
-		//TODO:: WHY????
 		tempVertex.tangent = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+
+		//tempVertex.pos.x *= -1;
+		//tempVertex.normal.x *= -1;
 
 		m_vertices.push_back(tempVertex);
 		m_indices.push_back(i);
@@ -319,6 +328,7 @@ void Model::CalculateTangents()
 	for (unsigned int  i = 0; i < m_indices.size(); i+=3)
 	{
 		//TODO:: Average Tangents
+		//TODO:: calc tangents for objects other than models
 		XMFLOAT3 tempVert1 = m_vertices[m_indices[i]].pos;
 		XMFLOAT3 tempVert2 = m_vertices[m_indices[i+1]].pos;
 		XMFLOAT3 tempVert3 = m_vertices[m_indices[i+2]].pos;
@@ -361,7 +371,7 @@ void Model::CalculateTangents()
 			XMStoreFloat3(&dotResult, XMVector3Dot(XMLoadFloat3(&m_vertices[m_indices[i+j]].normal), uDirec));
 			XMVECTOR tangent;
 			XMFLOAT4 prevTangent = m_vertices[m_indices[i + j]].tangent;
-			tangent = uDirec - XMLoadFloat3(&m_vertices[m_indices[i + j]].normal) * dotResult.y;
+			tangent = uDirec - XMLoadFloat3(&m_vertices[m_indices[i + j]].normal) * dotResult.x;
 			tangent = XMVector3Normalize(tangent);
 			XMStoreFloat4(&m_vertices[m_indices[i + j]].tangent, tangent);
 
@@ -369,7 +379,7 @@ void Model::CalculateTangents()
 			XMVECTOR cross = XMVector3Cross(XMLoadFloat3(&m_vertices[m_indices[i + j]].normal), uDirec);
 			XMVECTOR handedness = vDirec;
 			XMStoreFloat3(&dotResult, XMVector3Dot(cross, handedness));
-			m_vertices[m_indices[i + j]].tangent.w = (dotResult.y < 0.0f) ? -1.0f : 1.0f;
+			m_vertices[m_indices[i + j]].tangent.w = (dotResult.x < 0.0f) ? -1.0f : 1.0f;
 
 
 			//TODO: AVERAGE?????
@@ -397,3 +407,5 @@ void Model::Release()
 	m_NormalMapSRV.Reset();
 	m_SpecularMapSRV.Reset();
 }
+
+

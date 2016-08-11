@@ -43,17 +43,29 @@ float4 main(PixelShaderInput input) : SV_TARGET
 		switch (uint(lights[i].position.w))
 		{
 		case 0:
+		{
 			lightColor += CalculateDirectionalLighting(lights[i], input.normal);
-			break;
-		case 1:
-			lightColor += CalculatePointLighting(lights[i], input.wPos);
-			break;
-		case 2:
-			lightColor += CalculateConeLighting(lights[i], input.wPos, input.normal);
+			float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, input.normal, lights[i].color.xyz);
+			lightColor += specHighLight;
 			break;
 		}
-		float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, input.normal, lights[i].color.xyz);
-		lightColor += specHighLight;
+		case 1:
+		{
+			lightColor += CalculatePointLighting(lights[i], input.normal,input.wPos);
+			float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, input.normal, lights[i].color.xyz);
+			lightColor += specHighLight;
+			//lightColor *= CalculateSpotAttenuation(lights[i], input.normal, input.wPos);
+			break;
+		}
+		case 2:
+		{
+			lightColor += CalculateConeLighting(lights[i], input.wPos, input.normal);
+			float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, input.normal, lights[i].color.xyz);
+			lightColor += (specHighLight);
+			//lightColor *= CalculateConeFalloff(lights[i], input.wPos);
+			break;
+		}
+		}
 	}
 
 

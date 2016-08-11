@@ -114,6 +114,18 @@
     <Image Include="T_HeavyTurret_D.dds">
       <Filter>Assets\Textures</Filter>
     </Image>
+    <Image Include="Box_Wood02Dark_N.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="tilefloor2_seamless_N.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="Fieldstone.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="FieldstoneBump.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -132,12 +144,30 @@
     <None Include="GunTurret01.obj">
       <Filter>Assets\Models</Filter>
     </None>
+    <None Include="Cube.obj">
+      <Filter>Assets\Models</Filter>
+    </None>
+    <None Include="Sphere.obj">
+      <Filter>Assets\Models</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Content\PSNormalMap.hlsl">
       <Filter>Content</Filter>
     </FxCompile>
     <FxCompile Include="Content\PSNormalSpecular.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="PSSkybox.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="VSSkybox.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="GeometryShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\VSInstanced.hlsl">
       <Filter>Content</Filter>
     </FxCompile>
   </ItemGroup>
