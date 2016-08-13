@@ -102,7 +102,7 @@ void Model::SetVerts(std::vector<RobustVertex> _vertices)
 	m_vertices = _vertices;
 }
 
-void Model::SetIndices(std::vector<unsigned int> _indices)
+void Model::SetIndices(std::vector<unsigned short> _indices)
 {
 	m_indices.clear();
 	m_indices = _indices;
@@ -201,7 +201,7 @@ void Model::CreateIndexBuffer()
 	indexBufferData.pSysMem = m_indices.data();
 	indexBufferData.SysMemPitch = 0;
 	indexBufferData.SysMemSlicePitch = 0;
-	CD3D11_BUFFER_DESC indexBufferDesc(m_indices.size() * sizeof(unsigned int), D3D11_BIND_INDEX_BUFFER);
+	CD3D11_BUFFER_DESC indexBufferDesc(m_indices.size() * sizeof(unsigned short), D3D11_BIND_INDEX_BUFFER);
 	HRESULT result =
 		m_deviceResources->GetD3DDevice()->CreateBuffer(
 			&indexBufferDesc,
@@ -321,6 +321,133 @@ bool Model::LoadSpecularMap()
 	HRESULT result = CreateDDSTextureFromFile(this->m_deviceResources->GetD3DDevice(), m_specularMapFile, NULL, m_SpecularMapSRV.GetAddressOf());
 	return (result == S_OK) ? true : false;
 }
+//
+//void Model::Draw(const std::shared_ptr<DX::DeviceResources>& _deviceResources,ID3D11Buffer* _constantBufferVS,ID3D11Buffer* _constantBufferGS,ID3D11Buffer* _constantBufferPS1, ID3D11Buffer* _constantBufferPS2,ID3D11InputLayout* _inputLayout,ID3D11VertexShader* _VShader, ID3D11GeometryShader* _GShader, ID3D11PixelShader* _PShader, ViewProjectionConstantBuffer _VPBufferData, ModelConstantBuffer _MBufferData, LightConstantBuffer _LBufferData)
+//{
+//	//TODO: Maybe update buffers in here as well
+//	auto context = _deviceResources->GetD3DDeviceContext();
+//
+//	// Prepare the constant buffer to send it to the graphics device.
+//	context->UpdateSubresource1(
+//		_constantBufferVS,
+//		0,
+//		NULL,
+//		&_VPBufferData,
+//		0,
+//		0,
+//		0
+//	);
+//	context->UpdateSubresource1(
+//		_constantBufferGS,
+//		0,
+//		NULL,
+//		&_MBufferData,
+//		0,
+//		0,
+//		0
+//	);
+//	context->UpdateSubresource1(
+//		_constantBufferPS1,
+//		0,
+//		NULL,
+//		&_LBufferData,
+//		0,
+//		0,
+//		0
+//	);
+//
+//	UINT stride = sizeof(RobustVertex);
+//	UINT offset = 0;
+//
+//	// Each vertex is one instance of the VertexPositionColor struct.
+//	context->IASetVertexBuffers(
+//		0,
+//		1,
+//		GetVertexBuffer().GetAddressOf(),
+//		&stride,
+//		&offset
+//	);
+//
+//	context->IASetIndexBuffer(
+//		GetIndexBuffer().Get(),
+//		DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+//		0
+//	);
+//
+//	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+//
+//	context->IASetInputLayout(_inputLayout);
+//
+//	// Attach our vertex shader.
+//	context->VSSetShader(
+//		_VShader,
+//		nullptr,
+//		0
+//	);
+//
+//	// Send the constant buffer to the graphics device.
+//	context->VSSetConstantBuffers1(
+//		0,
+//		1,
+//		&_constantBufferVS,
+//		nullptr,
+//		nullptr
+//	);
+//	// Send the constant buffer to the graphics device.
+//	context->GSSetConstantBuffers1(
+//		0,
+//		1,
+//		&_constantBufferGS,
+//		nullptr,
+//		nullptr
+//	);
+//	// Attach our pixel shader.
+//	context->GSSetShader(
+//		_GShader,
+//		nullptr,
+//		0
+//	);
+//
+//	// Attach our pixel shader.
+//	context->PSSetShader(
+//		_PShader,
+//		nullptr,
+//		0
+//	);
+//
+//	context->PSSetConstantBuffers1(
+//		0,
+//		1,
+//		&_constantBufferPS1,
+//		nullptr,
+//		nullptr
+//	);
+//
+//	//TODO: camera position changes for each viewport
+//	context->PSSetConstantBuffers1(
+//		1,
+//		1,
+//		&_constantBufferPS2,
+//		nullptr,
+//		nullptr
+//	);
+//
+//
+//	context->PSSetShaderResources(0, 1, GetSRV().GetAddressOf());
+//	context->PSSetShaderResources(1, 1, GetNormalMap().GetAddressOf());
+//
+//	//TODO:Add back
+//	//context->PSSetSamplers(0, 1, sampler.GetAddressOf());
+//
+//	// Draw the objects.
+//	context->DrawIndexed(
+//		GetIndices().size(),
+//		0,
+//		0
+//	);
+//
+//}
+
 
 void Model::CalculateTangents()
 {
@@ -328,7 +455,6 @@ void Model::CalculateTangents()
 	for (unsigned int  i = 0; i < m_indices.size(); i+=3)
 	{
 		//TODO:: Average Tangents
-		//TODO:: calc tangents for objects other than models
 		XMFLOAT3 tempVert1 = m_vertices[m_indices[i]].pos;
 		XMFLOAT3 tempVert2 = m_vertices[m_indices[i+1]].pos;
 		XMFLOAT3 tempVert3 = m_vertices[m_indices[i+2]].pos;
@@ -382,7 +508,6 @@ void Model::CalculateTangents()
 			m_vertices[m_indices[i + j]].tangent.w = (dotResult.x < 0.0f) ? -1.0f : 1.0f;
 
 
-			//TODO: AVERAGE?????
 			//if (m_indices[i + j] != i + j)
 			//{
 			//	break;

@@ -76,8 +76,9 @@ bool GraphicsSceneMain::Render()
 	auto context = m_deviceResources->GetD3DDeviceContext();
 
 	// Reset the viewport to target the whole screen.
-	auto viewport = m_deviceResources->GetScreenViewport();
-	context->RSSetViewports(1, &viewport);
+	//auto viewport = m_deviceResources->GetScreenViewport();
+	D3D11_VIEWPORT viewport[2] = { m_deviceResources->GetScreenViewport(),m_deviceResources->GetScreenViewport2() };
+	context->RSSetViewports(2, viewport);
 
 	// Reset render targets to the screen.
 	ID3D11RenderTargetView *const targets[1] = { m_deviceResources->GetBackBufferRenderTargetView() };

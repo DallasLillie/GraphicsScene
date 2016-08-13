@@ -146,7 +146,6 @@ void App::Uninitialize()
 bool mouse_move = false;
 float diffx = 0;
 float diffy = 0;
-bool left_click = false;
 char buttons[256] = {};
 
 void App::OnPointerPressed(CoreWindow^ sender, PointerEventArgs^ args)
@@ -156,12 +155,16 @@ void App::OnPointerPressed(CoreWindow^ sender, PointerEventArgs^ args)
 	mouse_move = true;
 	if (args->CurrentPoint->Properties->IsRightButtonPressed)
 	{
-		buttons[2] = true;
+		buttons[VK_RBUTTON] = true;
+	}
+	else if (args->CurrentPoint->Properties->IsLeftButtonPressed)
+	{
+		buttons[VK_LBUTTON] = true;
 	}
 	else
 	{
-		left_click = true;
-		buttons[2] = false;
+		buttons[VK_RBUTTON] = false;
+		buttons[VK_LBUTTON] = false;
 	}
 }
 
@@ -169,16 +172,21 @@ void App::OnPointerReleased(CoreWindow^ sender, PointerEventArgs^ args)
 {
 	diffx = 0;
 	diffy = 0;
-	left_click = false;
+	buttons[VK_LBUTTON] = false;
 	mouse_move = true;
 
 	if (args->CurrentPoint->Properties->IsRightButtonPressed)
 	{
-		buttons[2] = true;
+		buttons[VK_RBUTTON] = false;
+	}
+	else if (args->CurrentPoint->Properties->IsLeftButtonPressed)
+	{
+		buttons[VK_LBUTTON] = false;
 	}
 	else
 	{
-		buttons[2] = false;
+		buttons[VK_RBUTTON] = false;
+		buttons[VK_LBUTTON] = false;
 	}
 }
 
@@ -200,9 +208,9 @@ void GraphicsScene::App::OnPointerExited(Windows::UI::Core::CoreWindow ^sender, 
 {
 	diffx = 0;
 	diffy = 0;
-	left_click = false;
 	mouse_move = false;
-	buttons[2] = false;
+	buttons[VK_RBUTTON] = false;
+	buttons[VK_LBUTTON] = false;
 }
 
 void GraphicsScene::App::OnKeyDown(Windows::UI::Core::CoreWindow ^ sender, Windows::UI::Core::KeyEventArgs ^ args)

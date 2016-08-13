@@ -62,31 +62,40 @@ float4 main(PixelShaderInput input) : SV_TARGET
 		{
 		case 0:
 		{
-			addColor = float3(0.0f, 0.0f, 0.0f);
-			addColor += CalculateDirectionalLighting(lights[i], newNormal.xyz);
-			float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, newNormal.xyz, lights[i].color.xyz);
-			addColor += (specHighLight);
-			lightColor += saturate(addColor);
+			if (lights[i].ratio.w)
+			{
+				addColor = float3(0.0f, 0.0f, 0.0f);
+				addColor += CalculateDirectionalLighting(lights[i], newNormal.xyz);
+				float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, newNormal.xyz, lights[i].color.xyz);
+				addColor += (specHighLight);
+				lightColor += saturate(addColor);
+			}
 			break;
 		}
 		case 1:
 		{
-			addColor = float3(0.0f, 0.0f, 0.0f);
-			addColor += CalculatePointLighting(lights[i],newNormal.xyz, input.wPos);
-			float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, newNormal.xyz, lights[i].color.xyz);
-			addColor += (specHighLight);
-			addColor *= CalculatePointAttenuation(lights[i], newNormal.xyz, input.wPos);
-			lightColor += saturate(addColor);
+			if (lights[i].ratio.w)
+			{
+				addColor = float3(0.0f, 0.0f, 0.0f);
+				addColor += CalculatePointLighting(lights[i], newNormal.xyz, input.wPos);
+				float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, newNormal.xyz, lights[i].color.xyz);
+				addColor += (specHighLight);
+				addColor *= CalculatePointAttenuation(lights[i], newNormal.xyz, input.wPos);
+				lightColor += saturate(addColor);
+			}
 			break;
 		}
 		case 2:
 		{
-			addColor = float3(0.0f, 0.0f, 0.0f);
-			addColor += CalculateConeLighting(lights[i], input.wPos, newNormal.xyz);
-			float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, newNormal.xyz, lights[i].color.xyz);
-			addColor += (specHighLight);
-			addColor *= CalculateConeFalloff(lights[i], input.wPos);
-			lightColor += saturate(addColor);
+			if (lights[i].ratio.w)
+			{
+				addColor = float3(0.0f, 0.0f, 0.0f);
+				addColor += CalculateConeLighting(lights[i], input.wPos, newNormal.xyz);
+				float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, newNormal.xyz, lights[i].color.xyz);
+				addColor += (specHighLight);
+				addColor *= CalculateConeFalloff(lights[i], input.wPos);
+				lightColor += saturate(addColor);
+			}
 			break;
 		}
 		}

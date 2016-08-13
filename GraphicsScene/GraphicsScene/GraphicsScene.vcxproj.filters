@@ -75,6 +75,7 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="DDSTextureLoader.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="ShadowMap.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -82,6 +83,7 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="DDSTextureLoader.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="ShadowMap.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\StoreLogo.png">
@@ -168,6 +170,15 @@
       <Filter>Content</Filter>
     </FxCompile>
     <FxCompile Include="Content\VSInstanced.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="VertexShaderM.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="GeometryShaderVP.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="GSSkybox.hlsl">
       <Filter>Content</Filter>
     </FxCompile>
   </ItemGroup>

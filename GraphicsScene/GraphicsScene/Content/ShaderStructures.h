@@ -10,8 +10,19 @@ namespace GraphicsScene
 		DirectX::XMFLOAT4X4 projection;
 	};
 
+	struct ModelConstantBuffer
+	{
+		DirectX::XMFLOAT4X4 model;
+	};
+
+	struct ViewProjectionConstantBuffer
+	{
+		DirectX::XMFLOAT4X4 view[2];
+		DirectX::XMFLOAT4X4 projection[2];
+	};
+
 	// Constant buffer used to send MVP matrices to the vertex shader.
-	struct MVPInstancedConstantBuffer
+	struct MInstancedConstantBuffer
 	{
 		DirectX::XMFLOAT4X4 model[10];
 		DirectX::XMFLOAT4X4 view;
@@ -34,7 +45,7 @@ namespace GraphicsScene
 		DirectX::XMFLOAT4 position;
 		DirectX::XMFLOAT4 normal;
 		DirectX::XMFLOAT4 color;
-		//OuterConeRatio, InnerConeRatio, LightRadius, Padding
+		//OuterConeRatio, InnerConeRatio, LightRadius, On/Off
 		DirectX::XMFLOAT4 ratio;
 	};
 

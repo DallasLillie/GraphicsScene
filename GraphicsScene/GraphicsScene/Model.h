@@ -24,7 +24,7 @@ class Model
 	const wchar_t* m_specularMapFile;
 
 	std::vector<RobustVertex> m_vertices;
-	std::vector<unsigned int> m_indices;
+	std::vector<unsigned short> m_indices;
 
 	XMFLOAT4X4 m_worldMatrix;
 public:
@@ -49,7 +49,7 @@ public:
 	void SetNormalMapFile(const wchar_t * _normalMapFile);
 	void SetSpecularMapFile(const wchar_t * _specularMapFile);
 	void SetVerts(const std::vector<RobustVertex> _vertices);
-	void SetIndices(const std::vector<unsigned int> _indices);
+	void SetIndices(const std::vector<unsigned short> _indices);
 	void SetWorldMatrix(const XMFLOAT4X4 _worldMatrix);
 
 	//Accessors
@@ -64,7 +64,7 @@ public:
 	const wchar_t* GetNormalMapFile() const { return m_normalMapFile; }
 	const wchar_t* GetSpecularMapFile() const { return m_specularMapFile; }
 	const std::vector<RobustVertex>& GetVerts() const { return m_vertices; }
-	const std::vector<unsigned int>& GetIndices() const { return m_indices; }
+	const std::vector<unsigned short>& GetIndices() const { return m_indices; }
 	const XMFLOAT4X4& GetWorldMatrix() const { return m_worldMatrix; }
 	XMFLOAT4X4& GetWorldMatrix() { return m_worldMatrix; }
 
@@ -81,6 +81,8 @@ public:
 	bool LoadDDSTexture();
 	bool LoadNormalMap();
 	bool LoadSpecularMap();
+
+	//void Draw();
 
 	void CalculateTangents();
 

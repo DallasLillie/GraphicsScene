@@ -1,11 +1,8 @@
-#include "LightingCalculations.hlsli"
 
 // A constant buffer that stores the three basic column-major matrices for composing geometry.
-cbuffer MInstancedConstantBuffer : register(b0)
+cbuffer ModelConstantBuffer : register(b0)
 {
-	matrix model[10];
-	//matrix view;
-	//matrix projection;
+	matrix model;
 };
 
 // Per-vertex data used as input to the vertex shader.
@@ -21,7 +18,7 @@ struct VertexShaderInput
 struct VertexShaderOutput
 {
 	float4 pos : SV_POSITION;
-	//float3 wPos : WPOSITION;
+	//float3 wPos : WPOSITION; //Output from geometry shader
 	float2 texCoord : TEXCOORD;
 	float4 tangent : TANGENT;
 	float4 biTangent :BTANGENT;
@@ -29,7 +26,7 @@ struct VertexShaderOutput
 };
 
 // Simple shader to do vertex processing on the GPU.
-VertexShaderOutput main(VertexShaderInput input,uint instanceIndex : SV_InstanceID)
+VertexShaderOutput main(VertexShaderInput input)
 {
 	VertexShaderOutput output = (VertexShaderOutput)0;
 	float4 pos = float4(input.pos, 1.0f);
@@ -37,16 +34,10 @@ VertexShaderOutput main(VertexShaderInput input,uint instanceIndex : SV_Instance
 	float4 tangent = input.tangent;
 
 	// Transform the vertex position into projected space.
-	pos = mul(pos, model[instanceIndex]);
-	normal = mul(normal, model[instanceIndex]);
-	output.tangent = mul(float4(tangent.xyz, 0.0f), model[instanceIndex]);
-	//output.tangent = mul(float4(tangent.xyz*tangent.w, 0.0f), model);
-	output.biTangent = mul(float4(cross(normal.xyz, tangent.xyz), 0.0f), model[instanceIndex]);
-
-	//output.wPos = pos.xyz;
-
-	//pos = mul(pos, view);
-	//pos = mul(pos, projection);
+	pos = mul(pos, model);
+	normal = mul(normal, model);
+	output.tangent = mul(float4(tangent.xyz, 0.0f), model);
+	output.biTangent = mul(float4(cross(normal.xyz, tangent.xyz), 0.0f), model);
 
 	output.pos = pos;
 	output.normal = normal;

@@ -28,6 +28,8 @@ TextureCube skyBox : register(t1);
 
 SamplerState filter : register(s0);
 
+//NO LONGER BEING USED
+
 // A pass-through function for the (interpolated) color data.
 float4 main(PixelShaderInput input) : SV_TARGET
 {

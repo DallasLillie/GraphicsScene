@@ -45,23 +45,37 @@ namespace GraphicsScene
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_indexBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_indexFloor;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>			m_vertexShader;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader>			m_vertexShaderM;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>			m_vertexShaderSky;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>			m_vertexShaderInstanced;
 		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_geometryShader;
+		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_geometryShaderVP;
+		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_geometryShaderSky;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShader;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderN;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderNS;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderSky;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBufferM;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBufferVP;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_lightBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_camBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantInstanceBuffer;
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState>		m_rasterizerStateCW;
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState>		m_rasterizerStateCCW;
+		Microsoft::WRL::ComPtr<ID3D11RenderTargetView1>		m_RTTRenderTargetView;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView>		m_RTTDepthStencilView;
+
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>			m_RTTBackBuffer;
+		D3D11_VIEWPORT										m_RTTViewport;
+
 
 		// System resources for cube geometry.
 		ModelViewProjectionConstantBuffer	m_constantBufferData;
-		MVPInstancedConstantBuffer m_constantInstanceData;
+		ModelViewProjectionConstantBuffer	m_RTTCBufferData;
+		ModelConstantBuffer	m_constantBufferDataM;
+		ViewProjectionConstantBuffer	m_constantBufferDataVP;
+		MInstancedConstantBuffer m_constantInstanceData;
 		LightConstantBuffer m_lightBufferData;
 		SpecularBufferCam m_specBufferCamData;
 		uint32	m_indexCount;
@@ -72,7 +86,6 @@ namespace GraphicsScene
 		float	m_degreesPerSecond;
 		bool	m_tracking;
 
-		//TODO:Memory
 		//Samplers
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerFloor;
@@ -84,6 +97,7 @@ namespace GraphicsScene
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> floorNSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> flatNormalMapSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> SkyCubeSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> RTTSRV;
 
 		//Models
 		Model cube;
@@ -92,7 +106,9 @@ namespace GraphicsScene
 		Model GunTurret;
 		Model Sphere;
 
-		XMFLOAT4X4 camera;//world , proj;
+		XMFLOAT4X4 camera;
+		XMFLOAT4X4 camera2;
+		//world , proj;
 	};
 }
 

@@ -65,7 +65,7 @@ namespace ScreenRotation
 };
 
 // Constructor for DeviceResources.
-DX::DeviceResources::DeviceResources() :
+DX::DeviceResources::DeviceResources():
 	m_screenViewport(),
 	m_d3dFeatureLevel(D3D_FEATURE_LEVEL_9_1),
 	m_d3dRenderTargetSize(),
@@ -409,14 +409,21 @@ void DX::DeviceResources::CreateWindowSizeDependentResources()
 		);
 	
 	// Set the 3D rendering viewport to target the entire window.
-	m_screenViewport = CD3D11_VIEWPORT(
+	m_screenViewport[0] = CD3D11_VIEWPORT(
 		0.0f,
 		0.0f,
 		m_d3dRenderTargetSize.Width,
-		m_d3dRenderTargetSize.Height
+		m_d3dRenderTargetSize.Height*0.5f
 		);
+	// Set the 3D rendering viewport to target the entire window.
+	m_screenViewport[1] = CD3D11_VIEWPORT(
+		0.0f,
+		m_d3dRenderTargetSize.Height*0.5f,
+		m_d3dRenderTargetSize.Width,
+		m_d3dRenderTargetSize.Height*0.5f
+	);
 
-	m_d3dContext->RSSetViewports(1, &m_screenViewport);
+	m_d3dContext->RSSetViewports(2, m_screenViewport);
 
 	// Create a Direct2D target bitmap associated with the
 	// swap chain back buffer and set it as the current target.
@@ -476,7 +483,7 @@ void DX::DeviceResources::UpdateRenderTargetSize()
 
 	// Prevent zero size DirectX content from being created.
 	m_outputSize.Width = max(m_outputSize.Width, 1);
-	m_outputSize.Height = max(m_outputSize.Height, 1);
+	m_outputSize.Height = max(m_outputSize.Height, 1)*0.5f;
 }
 
 // This method is called when the CoreWindow is created (or re-created).
