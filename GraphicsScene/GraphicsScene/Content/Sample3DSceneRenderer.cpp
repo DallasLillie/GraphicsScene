@@ -21,7 +21,6 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	CreateWindowSizeDependentResources();
 	InitializeLights();
 
-
 	static XMVECTORF32 eye = { 0.0f, 3.0f, -5.0f, 1.0f };
 	static XMVECTORF32 at = { 0.0f, 0.0f, 0.0f, 1.0f };
 	static XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
@@ -96,6 +95,8 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 		&m_RTTDepthStencilView
 	);
 
+	depthStencil->Release();
+	depthStencil = nullptr;
 
 	m_RTTViewport = CD3D11_VIEWPORT(
 		0.0f,
@@ -116,7 +117,7 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 	XMMATRIX perspectiveMatrix = XMMatrixPerspectiveFovLH(
 		fovAngleY,
 		aspectRatio,
-		0.01f,
+		NEAR_PLANE,
 		100.0f
 	);
 
@@ -385,6 +386,15 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	m_constantBufferDataVP.view[0] = m_constantBufferData.view;
 	m_constantBufferDataVP.view[1] = m_constantBufferData.view;
 
+	//Maybenotdothis every frame? just a size right? does it ever get updated outside of this?
+	Size	outputSize;
+	outputSize = m_deviceResources->GetOutputSize();
+	for (unsigned int i = 0; i < NUM_LIGHTS; ++i)
+	{
+		m_lightBufferDataVP.UpdateView(m_lightBufferData.lights[i], outputSize.Width, outputSize.Height);
+		m_lightBufferDataVP.UpdateProjection(m_lightBufferData.lights[i], outputSize.Width, outputSize.Height);
+	}
+
 	mouse_move = false;/*Reset*/
 }
 
@@ -536,6 +546,7 @@ void Sample3DSceneRenderer::Render()
 
 	}
 
+	//First Pass Shadows
 
 
 
@@ -682,7 +693,6 @@ void Sample3DSceneRenderer::Render()
 	}
 
 
-
 	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	context->RSSetState(m_rasterizerStateCW.Get());
 	//DrawCube
@@ -806,7 +816,6 @@ void Sample3DSceneRenderer::Render()
 		);
 
 	}
-
 
 
 
@@ -1353,6 +1362,15 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 				&m_constantBufferVP
 			)
 		);
+
+		CD3D11_BUFFER_DESC lightBufferDesc(sizeof(ViewProjectionLightBuffer), D3D11_BIND_CONSTANT_BUFFER);
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateBuffer(
+				&lightBufferDesc,
+				nullptr,
+				&m_lightBufferVP
+			)
+		);
 	});
 
 	auto createGSSkyTask = loadGSSkyTask.then([this](const std::vector<byte>& fileData) {
@@ -1452,7 +1470,9 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	});
 
 	// Once both shaders are loaded, create the mesh.
-	auto createCubeTask = (createPSTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask).then([this]() {
+	auto CreateShaders = (createPSTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask);
+
+	auto createCubeTask = CreateShaders.then([this]() {
 
 		// Load mesh vertices. Each vertex has a position and a color.
 		static const RobustVertex cubeVertices[] =
@@ -1557,7 +1577,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 			NULL, cubeNSRV.GetAddressOf());
 	});
 
-	auto createFloorTask = (createPSTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask).then([this]()
+	auto createFloorTask = CreateShaders.then([this]()
 	{
 		//RobustVertex floorVertices[] =
 		//{
@@ -1619,31 +1639,36 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	});
 
 	//TODO: make a loop through all models in a models array, make an array of modefilenames and texturefilenames that is read from a file(After Project Task)
-	auto createPyramidTask = (createPSTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask).then([this]()
+	auto createPyramidTask = CreateShaders.then([this]()
 	{
 		pyramid.CreateModel(m_deviceResources, "test pyramid.obj", L"Box_Wood02Dark.dds");
 	});
 
-	auto createGoombaTask = (createPSTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask).then([this]()
+	auto createGoombaTask = CreateShaders.then([this]()
 	{
 		Goomba.CreateModel(m_deviceResources, "Goomba.obj", L"Diffuse_Fuzzy.dds", L"Normal_Fuzzy.dds");
 	});
 
-	auto createGunTurretTask = (createPSTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask).then([this]()
+	auto createGunTurretTask = CreateShaders.then([this]()
 	{
 		GunTurret.CreateModel(m_deviceResources, "GunTurret01.obj", L"T_HeavyTurret_D.dds", L"T_HeavyTurret_N.dds", L"T_HeavyTurret_S.dds");
 	});
 
-	auto createSkyCubeTask = (createPSTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask).then([this]()
+	auto createSkyCubeTask = CreateShaders.then([this]()
 	{
-		HRESULT result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"SkyboxOcean.dds",
+		HRESULT result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"DarkSnowy.dds",
 			NULL, &SkyCubeSRV);
 	});
 
-	auto createSphereTask = (createPSTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask).then([this]()
+	auto createSphereTask = CreateShaders.then([this]()
 	{
 		Sphere.CreateModel(m_deviceResources, "Sphere.obj", L"Fieldstone.dds", L"FieldstoneBump.dds");
 	});
+
+	//auto createWolfTask = CreateShaders.then([this]()
+	//{
+	//	Wolf.CreateModel(m_deviceResources, "Wolf.obj", L"Wolf.dds", L"WolfN.dds");
+	//});
 
 	//Texture Filter
 	CD3D11_SAMPLER_DESC samplerDesc = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
@@ -1671,10 +1696,13 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 {
 	m_loadingComplete = false;
 	m_vertexShader.Reset();
+	m_vertexShaderM.Reset();
 	m_vertexShaderSky.Reset();
 	m_vertexShaderInstanced.Reset();
 	m_inputLayout.Reset();
 	m_geometryShader.Reset();
+	m_geometryShaderVP.Reset();
+	m_geometryShaderSky.Reset();
 	m_pixelShader.Reset();
 	m_pixelShaderN.Reset();
 	m_pixelShaderNS.Reset();
@@ -1684,6 +1712,7 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	m_constantBufferVP.Reset();
 	m_constantInstanceBuffer.Reset();
 	m_lightBuffer.Reset();
+	m_lightBufferVP.Reset();
 	m_camBuffer.Reset();
 	m_vertexBuffer.Reset();
 	m_indexBuffer.Reset();
@@ -1693,14 +1722,20 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	samplerFloor.Reset();
 	cubeSRV.Reset();
 	floorSRV.Reset();
+	floorNSRV.Reset();
 	flatNormalMapSRV.Reset();
 	SkyCubeSRV.Reset();
+	RTTSRV.Reset();
 	m_rasterizerStateCW.Reset();
 	m_rasterizerStateCCW.Reset();
+	m_RTTRenderTargetView.Reset();
+	m_RTTDepthStencilView.Reset();
 
 	Goomba.Release();
 	pyramid.Release();
 	GunTurret.Release();
+	Sphere.Release();
+	cube.Release();
 }
 
 Light CreateDirectionalLight(XMFLOAT4 direction, XMFLOAT4 color)

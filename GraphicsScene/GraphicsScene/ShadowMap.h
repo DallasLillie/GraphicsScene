@@ -16,10 +16,13 @@ public:
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_ShadowSRV;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_ShadowDSV;
 
+	ShadowMap();
+
 	D3D11_VIEWPORT m_viewport;
 
 	ShadowMap(ID3D11Device3* _device, unsigned int _width, unsigned int _height);
 
 	void BindDSVandSetNullRenderTarget(ID3D11DeviceContext3* _context);
 };
+
 

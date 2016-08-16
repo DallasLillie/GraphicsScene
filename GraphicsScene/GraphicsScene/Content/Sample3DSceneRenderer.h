@@ -4,6 +4,7 @@
 #include "ShaderStructures.h"
 #include "..\Common\StepTimer.h"
 #include "Model.h"
+#include "ShadowMap.h"
 
 #include <DirectXMath.h>
 using namespace DirectX;
@@ -59,12 +60,15 @@ namespace GraphicsScene
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBufferM;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBufferVP;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_lightBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_lightBufferVP;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_camBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantInstanceBuffer;
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState>		m_rasterizerStateCW;
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState>		m_rasterizerStateCCW;
 		Microsoft::WRL::ComPtr<ID3D11RenderTargetView1>		m_RTTRenderTargetView;
 		Microsoft::WRL::ComPtr<ID3D11DepthStencilView>		m_RTTDepthStencilView;
+		
+		//ShadowMap shadowMap;
 
 		Microsoft::WRL::ComPtr<ID3D11Texture2D>			m_RTTBackBuffer;
 		D3D11_VIEWPORT										m_RTTViewport;
@@ -73,13 +77,14 @@ namespace GraphicsScene
 		// System resources for cube geometry.
 		ModelViewProjectionConstantBuffer	m_constantBufferData;
 		ModelViewProjectionConstantBuffer	m_RTTCBufferData;
-		ModelConstantBuffer	m_constantBufferDataM;
-		ViewProjectionConstantBuffer	m_constantBufferDataVP;
-		MInstancedConstantBuffer m_constantInstanceData;
-		LightConstantBuffer m_lightBufferData;
-		SpecularBufferCam m_specBufferCamData;
-		uint32	m_indexCount;
-		uint32	m_indexFloorCount;
+		ModelConstantBuffer					m_constantBufferDataM;
+		ViewProjectionConstantBuffer		m_constantBufferDataVP;
+		ViewProjectionLightBuffer			m_lightBufferDataVP;
+		MInstancedConstantBuffer			m_constantInstanceData;
+		LightConstantBuffer					m_lightBufferData;
+		SpecularBufferCam					m_specBufferCamData;
+		uint32								m_indexCount;
+		uint32								m_indexFloorCount;
 
 		// Variables used with the rendering loop.
 		bool	m_loadingComplete;
@@ -105,6 +110,7 @@ namespace GraphicsScene
 		Model Goomba;
 		Model GunTurret;
 		Model Sphere;
+		Model Wolf;
 
 		XMFLOAT4X4 camera;
 		XMFLOAT4X4 camera2;

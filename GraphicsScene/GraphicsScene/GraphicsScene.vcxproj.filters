@@ -128,6 +128,9 @@
     <Image Include="FieldstoneBump.dds">
       <Filter>Assets\Textures</Filter>
     </Image>
+    <Image Include="DarkSnowy.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />

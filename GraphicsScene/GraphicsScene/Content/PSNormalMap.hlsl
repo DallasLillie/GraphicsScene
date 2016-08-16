@@ -17,10 +17,11 @@ struct PixelShaderInput
 {
 	float4 pos : SV_POSITION;
 	float3 wPos : WPOSITION;
-	float2 texCoord : TEXCOORD;
+	float2 texCoord : TEXCOORD0;
 	float4 tangent : TANGENT;
 	float4 biTangent :BTANGENT;
 	float3 normal : NORMAL;
+	//float4 projTex : TEXCOORD1;
 };
 
 texture2D baseTexture : register(t0);

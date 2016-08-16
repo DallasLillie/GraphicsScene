@@ -4,6 +4,12 @@ cbuffer ViewProjectionConstantBuffer : register(b0)
 	matrix projection[2];
 };
 
+cbuffer ViewProjectionLightBuffer : register(b1)
+{
+	matrix viewL[6];
+	matrix projectionL;
+};
+
 struct GSInput
 {
 	float4 pos : SV_POSITION;
@@ -17,11 +23,12 @@ struct GSInput
 struct GSOutput
 {
 	float4 pos : SV_POSITION;
-	float3 wPos : WPOSITION; //Output from geometry shader
-	float2 texCoord : TEXCOORD;
+	float3 wPos : WPOSITION;
+	float2 texCoord : TEXCOORD0;
 	float4 tangent : TANGENT;
 	float4 biTangent :BTANGENT;
 	float3 normal : NORMAL;
+	//float4 projTex : TEXCOORD1;
 	uint viewport : SV_ViewportArrayIndex;
 };
 
@@ -44,6 +51,8 @@ void main(
 			element.biTangent = input[j].biTangent;
 			element.normal = input[j].normal;
 
+			//element.projTex = element.pos;
+			
 			element.pos = mul(element.pos, view[i]);
 			element.pos = mul(element.pos, projection[i]);
 

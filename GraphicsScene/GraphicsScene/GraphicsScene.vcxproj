@@ -198,6 +198,7 @@
     <Image Include="Box_Wood02Dark.dds" />
     <Image Include="Box_Wood02Dark_N.dds" />
     <Image Include="BumpMapFlatColour.dds" />
+    <Image Include="DarkSnowy.dds" />
     <Image Include="Diffuse_Fuzzy.dds" />
     <Image Include="Fieldstone.dds" />
     <Image Include="FieldstoneBump.dds" />

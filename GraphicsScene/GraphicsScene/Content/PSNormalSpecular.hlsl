@@ -17,14 +17,16 @@ struct PixelShaderInput
 {
 	float4 pos : SV_POSITION;
 	float3 wPos : WPOSITION;
-	float2 texCoord : TEXCOORD;
+	float2 texCoord : TEXCOORD0;
 	float4 tangent : TANGENT;
 	float4 biTangent :BTANGENT;
 	float3 normal : NORMAL;
+	//float4 projTex : TEXCOORD1;
 };
 
 texture2D baseTexture : register(t0);
 texture2D normalTexture : register(t1);
+//texture2D shadowMap : register(t2);
 texture2D specularTexture : register(t2);
 
 SamplerState filter : register(s0);
@@ -67,7 +69,7 @@ float4 main(PixelShaderInput input) : SV_TARGET
 				addColor = float3(0.0f, 0.0f, 0.0f);
 				addColor += CalculateDirectionalLighting(lights[i], newNormal.xyz);
 				float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, newNormal.xyz, lights[i].color.xyz);
-				addColor += (specHighLight);
+				addColor += (specHighLight*specularIntensity);
 				lightColor += saturate(addColor);
 			}
 			break;
@@ -79,7 +81,7 @@ float4 main(PixelShaderInput input) : SV_TARGET
 				addColor = float3(0.0f, 0.0f, 0.0f);
 				addColor += CalculatePointLighting(lights[i], newNormal.xyz, input.wPos);
 				float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, newNormal.xyz, lights[i].color.xyz);
-				addColor += (specHighLight);
+				addColor += (specHighLight*specularIntensity);
 				addColor *= CalculatePointAttenuation(lights[i], newNormal.xyz, input.wPos);
 				lightColor += saturate(addColor);
 			}
@@ -92,7 +94,7 @@ float4 main(PixelShaderInput input) : SV_TARGET
 				addColor = float3(0.0f, 0.0f, 0.0f);
 				addColor += CalculateConeLighting(lights[i], input.wPos, newNormal.xyz);
 				float3 specHighLight = CalculateSpecularLighting(lights[i], input.wPos, cameraPosition, newNormal.xyz, lights[i].color.xyz);
-				addColor += (specHighLight);
+				addColor += (specHighLight*specularIntensity);
 				addColor *= CalculateConeFalloff(lights[i], input.wPos);
 				lightColor += saturate(addColor);
 			}
@@ -101,5 +103,13 @@ float4 main(PixelShaderInput input) : SV_TARGET
 		}
 	}
 
-	return saturate(baseColor *float4(lightColor, 1.0f));
+	//input.projTex.xyz /= input.projTex.w;
+	//input.projTex.xy = (input.projTex.xy + 1)*0.5f;
+
+	//float ourDepth = input.projTex.z;
+	//float sampleDepth = shadowMap.Sample(filter, input.projTex.xy);
+
+	//float shadowFactor = (ourDepth <= sampleDepth);
+
+	return saturate(baseColor *float4(lightColor/**shadowFactor*/, 1.0f));
 }

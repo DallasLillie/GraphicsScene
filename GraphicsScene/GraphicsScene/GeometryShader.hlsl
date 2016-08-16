@@ -5,15 +5,10 @@ cbuffer ViewProjectionConstantBuffer : register(b0)
 	matrix projection[2];
 };
 
-struct GSOutput
+cbuffer ViewProjectionLightBuffer : register(b1)
 {
-	float4 pos : SV_POSITION;
-	float3 wPos : WPOSITION;
-	float2 texCoord : TEXCOORD;
-	float4 tangent : TANGENT;
-	float4 biTangent :BTANGENT;
-	float3 normal : NORMAL;
-	uint viewport : SV_ViewportArrayIndex;
+	matrix viewL[6];
+	matrix projectionL;
 };
 
 struct GSInput
@@ -26,6 +21,19 @@ struct GSInput
 	float3 normal : NORMAL;
 };
 
+struct GSOutput
+{
+	float4 pos : SV_POSITION;
+	float3 wPos : WPOSITION;
+	float2 texCoord : TEXCOORD0;
+	float4 tangent : TANGENT;
+	float4 biTangent :BTANGENT;
+	float3 normal : NORMAL;
+	//float4 projTex : TEXCOORD1;
+	uint viewport : SV_ViewportArrayIndex;
+};
+
+
 [maxvertexcount(8)]
 void main(
 	point GSInput input[1],
@@ -34,10 +42,10 @@ void main(
 {
 	for (unsigned int i = 0; i < 2; ++i)
 	{
-		GSOutput corner1 = { float4(-50.0f,  0.0f,  50.0f,1.0f),float3(-50.0f,  0.0f,  50.0f), float2(0.0f,0.0f),float4(-1.0f,0.0f,0.0f,0.0f),float4(0.0f,0.0f,1.0f,0.0f),float3(0.0f,1.0f,0.0f),i };
-		GSOutput corner2 = { float4(50.0f,  0.0f, 50.0f,1.0f),float3(50.0f,  0.0f, 50.0f), float2(100.0f,0.0f) ,float4(-1.0f,0.0f,0.0f,0.0f),float4(0.0f,0.0f,1.0f,0.0f),float3(0.0f,1.0f,0.0f),i };
-		GSOutput corner3 = { float4(-50.0f,  0.0f, -50.0f,1.0f),float3(-50.0f,  0.0f, -50.0f),float2(0.0f,100.0f),float4(-1.0f,0.0f,0.0f,0.0f),float4(0.0f,0.0f,1.0f,0.0f),float3(0.0f,1.0f,0.0f),i };
-		GSOutput corner4 = { float4(50.0f,  0.0f, -50.0f,1.0f),float3(50.0f,  0.0f, -50.0f),float2(100.0f,100.0f),float4(-1.0f,0.0f,0.0f,0.0f),float4(0.0f,0.0f,1.0f,0.0f),float3(0.0f,1.0f,0.0f),i };
+		GSOutput corner1 = { float4(-10.0f,  0.0f,  10.0f,1.0f),float3(-10.0f,  0.0f,  10.0f), float2(0.0f,0.0f),float4(-1.0f,0.0f,0.0f,0.0f),float4(0.0f,0.0f,1.0f,0.0f),float3(0.0f,1.0f,0.0f),i };
+		GSOutput corner2 = { float4(10.0f,  0.0f, 10.0f,1.0f),float3(10.0f,  0.0f, 10.0f), float2(20.0f,0.0f) ,float4(-1.0f,0.0f,0.0f,0.0f),  float4(0.0f,0.0f,1.0f,0.0f),float3(0.0f,1.0f,0.0f),i };
+		GSOutput corner3 = { float4(-10.0f,  0.0f, -10.0f,1.0f),float3(-10.0f,  0.0f, -10.0f),float2(0.0f,20.0f),float4(-1.0f,0.0f,0.0f,0.0f),float4(0.0f,0.0f,1.0f,0.0f),float3(0.0f,1.0f,0.0f),i };
+		GSOutput corner4 = { float4(10.0f,  0.0f, -10.0f,1.0f),float3(10.0f,  0.0f, -10.0f),float2(20.0f,20.0f),float4(-1.0f,0.0f,0.0f,0.0f), float4(0.0f,0.0f,1.0f,0.0f),float3(0.0f,1.0f,0.0f),i };
 
 		corner1.pos = mul(corner1.pos, view[i]);
 		corner1.pos = mul(corner1.pos, projection[i]);

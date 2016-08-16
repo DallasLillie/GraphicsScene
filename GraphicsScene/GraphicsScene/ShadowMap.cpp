@@ -1,6 +1,11 @@
 #include "pch.h"
 #include "ShadowMap.h"
 
+ShadowMap::ShadowMap()
+{
+
+}
+
 
 ShadowMap::ShadowMap(ID3D11Device3* _device, unsigned int _width, unsigned int _height) :
 	m_width(_width),

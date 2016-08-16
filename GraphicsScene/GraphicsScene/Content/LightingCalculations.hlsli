@@ -8,6 +8,7 @@ struct LIGHT
 	float4 ratio;
 };
 
+//TODO:optimize, pass less variables into function by taking light out and replacing with light's actual variables
 float3 CalculateSpecularLighting(LIGHT light,float3 surfacePosition,float3 camPosition,float3 surfaceNormal,float3 lightColor)
 {
 	float3 toLight = light.position.xyz - surfacePosition;
@@ -19,7 +20,7 @@ float3 CalculateSpecularLighting(LIGHT light,float3 surfacePosition,float3 camPo
 	float3 reflectVector = reflect(normalize(-1.0f*toLight), normalize(surfaceNormal));
 	float lightRatio = saturate(dot(light.normal, surfaceNormal));
 	float ratio = saturate(dot(normalize(toCamera), normalize(reflectVector)));
-	ratio = pow(ratio, 128);
+	ratio = pow(ratio, 32);
 	return ratio*lightColor;
 }
 
