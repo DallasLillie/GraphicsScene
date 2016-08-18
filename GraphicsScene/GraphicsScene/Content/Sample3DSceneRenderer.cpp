@@ -312,6 +312,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	model = XMMatrixMultiply(XMMatrixTranslation(0.0f, 0.25f, 0.0f), model);
 	model = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(-135)), model);
 	model = XMMatrixMultiply(XMMatrixRotationY(radians), model);
+	//model = XMMatrixMultiply(XMMatrixScaling(radians+1.0f, radians + 1.0f, radians + 1.0f), model);
 
 	model = XMMatrixMultiply(model, XMMatrixTranspose(XMLoadFloat4x4(&pyramid.GetWorldMatrix())));
 	XMStoreFloat4x4(&Goomba.GetWorldMatrix(), XMMatrixTranspose(model));
@@ -387,13 +388,9 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	m_constantBufferDataVP.view[1] = m_constantBufferData.view;
 
 	//Maybenotdothis every frame? just a size right? does it ever get updated outside of this?
-	Size	outputSize;
-	outputSize = m_deviceResources->GetOutputSize();
-	for (unsigned int i = 0; i < NUM_LIGHTS; ++i)
-	{
-		m_lightBufferDataVP.UpdateView(m_lightBufferData.lights[i], outputSize.Width, outputSize.Height);
-		m_lightBufferDataVP.UpdateProjection(m_lightBufferData.lights[i], outputSize.Width, outputSize.Height);
-	}
+	float dimension = 30;
+	m_lightBufferDataVP.UpdateView(m_lightBufferData.lights[0], dimension, dimension);
+	m_lightBufferDataVP.UpdateProjection(m_lightBufferData.lights[0], dimension, dimension);
 
 	mouse_move = false;/*Reset*/
 }
@@ -450,7 +447,7 @@ void Sample3DSceneRenderer::Render()
 	context->ClearDepthStencilView(m_RTTDepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
 
-
+	//TODO: should be done after shadowmap
 	//Draw Gunturret
 	{
 		//RESET GS
@@ -548,19 +545,364 @@ void Sample3DSceneRenderer::Render()
 
 	//First Pass Shadows
 
+	shadowMap->BindDSVandSetNullRenderTarget(context);
+	XMFLOAT4X4 tempView = m_constantBufferDataVP.view[0];
+	XMFLOAT4X4 tempView1 = m_constantBufferDataVP.view[1];
+	XMFLOAT4X4 tempProj = m_constantBufferDataVP.projection[0];
+	XMFLOAT4X4 tempProj1 = m_constantBufferDataVP.projection[1];
+	m_constantBufferDataVP.view[0] = m_lightBufferDataVP.view;
+	m_constantBufferDataVP.view[1] = m_lightBufferDataVP.view;
+	m_constantBufferDataVP.projection[0] = m_lightBufferDataVP.projection;
+	m_constantBufferDataVP.projection[1] = m_lightBufferDataVP.projection;
+
+	//Draw Things
+	{
+		context->RSSetState(m_rasterizerStateCW.Get());
+
+		//DrawCube
+		{
+			//model = XMMatrixTranslation(0.0f, 0.5f, 0.0f);
+			//model = XMMatrixScaling(0.51f, 0.51f, 0.51f)* model;
+			XMStoreFloat4x4(&m_constantBufferDataM.model, XMMatrixTranspose(cubeWorld));
+
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+			context->UpdateSubresource1(
+				m_constantBufferVP.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataVP,
+				0,
+				0,
+				0
+			);
+
+			context->UpdateSubresource1(
+				m_lightBufferVP.Get(),
+				0,
+				NULL,
+				&m_lightBufferDataVP,
+				0,
+				0,
+				0
+			);
+
+			// Each vertex is one instance of the VertexPositionColor struct.
+			context->IASetVertexBuffers(
+				0,
+				1,
+				m_vertexBuffer.GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				m_indexBuffer.Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			context->IASetInputLayout(m_inputLayout.Get());
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderM.Get(),
+				nullptr,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferM.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Send the constant buffer to the graphics device.
+			context->GSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferVP.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			context->GSSetConstantBuffers1(
+				1,
+				1,
+				m_lightBufferVP.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Attach our pixel shader.
+			context->GSSetShader(
+				m_geometryShaderVP.Get(),
+				nullptr,
+				0
+			);
+
+			// Attach our pixel shader.
+			context->PSSetShader(
+				m_pixelShaderShadow.Get(),
+				nullptr,
+				0
+			);
+
+			// Draw the objects.
+			context->DrawIndexed(
+				m_indexCount,
+				0,
+				0
+			);
+
+		}
+
+		//DRAWPYRAMID
+		{
+			m_constantBufferDataM.model = pyramid.GetWorldMatrix();
+
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+			context->UpdateSubresource1(
+				m_constantBufferVP.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataVP,
+				0,
+				0,
+				0
+			);
+
+			// Each vertex is one instance of the VertexPositionColor struct.
+			context->IASetVertexBuffers(
+				0,
+				1,
+				pyramid.GetVertexBuffer().GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				pyramid.GetIndexBuffer().Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			context->IASetInputLayout(m_inputLayout.Get());
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderM.Get(),
+				nullptr,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferM.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Send the constant buffer to the graphics device.
+			context->GSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferVP.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Attach our pixel shader.
+			context->GSSetShader(
+				m_geometryShaderVP.Get(),
+				nullptr,
+				0
+			);
+
+			// Draw the objects.
+			context->DrawIndexed(
+				pyramid.GetIndices().size(),
+				0,
+				0
+			);
+
+		}
 
 
+		//Draw Goomba
+		{
+			m_constantBufferDataM.model = Goomba.GetWorldMatrix();
+
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+
+			stride = sizeof(RobustVertex);
+			offset = 0;
+			context->IASetVertexBuffers(
+				0,
+				1,
+				Goomba.GetVertexBuffer().GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				Goomba.GetIndexBuffer().Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+			// Draw the objects.
+			context->DrawIndexed(
+				Goomba.GetIndices().size(),
+				0,
+				0
+			);
+		}
 
 
+		//Draw Spheres
+		{
+			m_constantInstanceData.view = m_constantBufferData.view;
+			m_constantInstanceData.projection = m_constantBufferData.projection;
 
+			context->UpdateSubresource1(
+				m_constantInstanceBuffer.Get(),
+				0,
+				NULL,
+				&m_constantInstanceData,
+				0,
+				0,
+				0
+			);
 
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderInstanced.Get(),
+				nullptr,
+				0
+			);
 
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantInstanceBuffer.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
 
+			stride = sizeof(RobustVertex);
+			offset = 0;
+			context->IASetVertexBuffers(
+				0,
+				1,
+				Sphere.GetVertexBuffer().GetAddressOf(),
+				&stride,
+				&offset
+			);
 
+			context->IASetIndexBuffer(
+				Sphere.GetIndexBuffer().Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
 
+			// Draw the objects.
+			context->DrawIndexedInstanced(
+				Sphere.GetIndices().size(),
+				10,
+				0,
+				0,
+				0
+			);
 
+		}
 
+		//Draw Gunturret
+		{
+			m_constantBufferDataM.model = GunTurret.GetWorldMatrix();
 
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderM.Get(),
+				nullptr,
+				0
+			);
+
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferM.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			stride = sizeof(RobustVertex);
+			offset = 0;
+			context->IASetVertexBuffers(
+				0,
+				1,
+				GunTurret.GetVertexBuffer().GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				GunTurret.GetIndexBuffer().Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+
+			// Draw the objects.
+			context->DrawIndexed(
+				GunTurret.GetIndices().size(),
+				0,
+				0
+			);
+
+		}
+}
 
 
 
@@ -576,6 +918,10 @@ void Sample3DSceneRenderer::Render()
 
 
 	//Second Pass
+	m_constantBufferDataVP.view[0] = tempView;
+	m_constantBufferDataVP.view[1] = tempView1;
+	m_constantBufferDataVP.projection[0] = tempProj;
+	m_constantBufferDataVP.projection[1] = tempProj1;
 	//TODO::better way to to do this
 	D3D11_VIEWPORT m_screenViewport[2];
 	m_screenViewport[0] = m_deviceResources->GetScreenViewport();
@@ -592,629 +938,639 @@ void Sample3DSceneRenderer::Render()
 	ID3D11GeometryShader *tempGS = nullptr;
 	context->GSSetShader(tempGS, nullptr, 0);
 
-	//Skybox
+	//Draw Things
 	{
-		model.r[3].m128_f32[0] = camera._41;
-		model.r[3].m128_f32[1] = camera._42;
-		model.r[3].m128_f32[2] = camera._43;
-		model.r[3].m128_f32[3] = camera._44;
-		XMStoreFloat4x4(&m_constantBufferDataM.model, XMMatrixTranspose(model));
+		//Skybox
+		{
+			model.r[3].m128_f32[0] = camera._41;
+			model.r[3].m128_f32[1] = camera._42;
+			model.r[3].m128_f32[2] = camera._43;
+			model.r[3].m128_f32[3] = camera._44;
+			XMStoreFloat4x4(&m_constantBufferDataM.model, XMMatrixTranspose(model));
 
-		context->RSSetState(m_rasterizerStateCCW.Get());
-		// Prepare the constant buffer to send it to the graphics device.
-		context->UpdateSubresource1(
-			m_constantBufferM.Get(),
-			0,
-			NULL,
-			&m_constantBufferDataM,
-			0,
-			0,
-			0
-		);
+			context->RSSetState(m_rasterizerStateCCW.Get());
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
 
-		context->UpdateSubresource1(
-			m_constantBufferVP.Get(),
-			0,
-			NULL,
-			&m_constantBufferDataVP,
-			0,
-			0,
-			0
-		);
+			context->UpdateSubresource1(
+				m_constantBufferVP.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataVP,
+				0,
+				0,
+				0
+			);
 
-		// Each vertex is one instance of the VertexPositionColor struct.
+			// Each vertex is one instance of the VertexPositionColor struct.
 
-		context->IASetVertexBuffers(
-			0,
-			1,
-			m_vertexBuffer.GetAddressOf(),
-			&stride,
-			&offset
-		);
+			context->IASetVertexBuffers(
+				0,
+				1,
+				m_vertexBuffer.GetAddressOf(),
+				&stride,
+				&offset
+			);
 
-		context->IASetIndexBuffer(
-			m_indexBuffer.Get(),
-			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
-			0
-		);
+			context->IASetIndexBuffer(
+				m_indexBuffer.Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
 
-		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		context->IASetInputLayout(m_inputLayout.Get());
+			context->IASetInputLayout(m_inputLayout.Get());
 
-		// Attach our vertex shader.
-		context->VSSetShader(
-			m_vertexShaderSky.Get(),
-			nullptr,
-			0
-		);
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderSky.Get(),
+				nullptr,
+				0
+			);
 
-		// Send the constant buffer to the graphics device.
-		context->VSSetConstantBuffers1(
-			0,
-			1,
-			m_constantBufferM.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferM.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
 
-		context->GSSetConstantBuffers1(
-			0,
-			1,
-			m_constantBufferVP.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
-		// Attach our pixel shader.
-		context->GSSetShader(
-			m_geometryShaderSky.Get(),
-			nullptr,
-			0
-		);
+			context->GSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferVP.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Attach our pixel shader.
+			context->GSSetShader(
+				m_geometryShaderSky.Get(),
+				nullptr,
+				0
+			);
 
-		// Attach our pixel shader.
-		context->PSSetShader(
-			m_pixelShaderSky.Get(),
-			nullptr,
-			0
-		);
+			// Attach our pixel shader.
+			context->PSSetShader(
+				m_pixelShaderSky.Get(),
+				nullptr,
+				0
+			);
 
-		context->PSSetShaderResources(0, 1, SkyCubeSRV.GetAddressOf());
+			context->PSSetShaderResources(0, 1, SkyCubeSRV.GetAddressOf());
 
-		context->PSSetSamplers(0, 1, sampler.GetAddressOf());
+			context->PSSetSamplers(0, 1, sampler.GetAddressOf());
 
-		// Draw the objects.
-		context->DrawIndexed(
-			m_indexCount,
-			0,
-			0
-		);
+			// Draw the objects.
+			context->DrawIndexed(
+				m_indexCount,
+				0,
+				0
+			);
+
+		}
+
+		context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+		context->RSSetState(m_rasterizerStateCW.Get());
+		//DrawCube
+		{
+			model = XMMatrixTranslation(0.0f, 0.5f, 0.0f);
+			model = XMMatrixScaling(0.51f, 0.51f, 0.51f)* model;
+			XMStoreFloat4x4(&m_constantBufferDataM.model, XMMatrixTranspose(cubeWorld));
+
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+			context->UpdateSubresource1(
+				m_constantBufferVP.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataVP,
+				0,
+				0,
+				0
+			);
+			context->UpdateSubresource1(
+				m_lightBuffer.Get(),
+				0,
+				NULL,
+				&m_lightBufferData,
+				0,
+				0,
+				0
+			);
+
+			// Each vertex is one instance of the VertexPositionColor struct.
+			context->IASetVertexBuffers(
+				0,
+				1,
+				m_vertexBuffer.GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				m_indexBuffer.Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			context->IASetInputLayout(m_inputLayout.Get());
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderM.Get(),
+				nullptr,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferM.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Send the constant buffer to the graphics device.
+			context->GSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferVP.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Attach our pixel shader.
+			context->GSSetShader(
+				m_geometryShaderVP.Get(),
+				nullptr,
+				0
+			);
+
+			// Attach our pixel shader.
+			context->PSSetShader(
+				m_pixelShaderN.Get(),
+				nullptr,
+				0
+			);
+
+			context->PSSetConstantBuffers1(
+				0,
+				1,
+				m_lightBuffer.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			context->PSSetConstantBuffers1(
+				1,
+				1,
+				m_camBuffer.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+
+			context->PSSetShaderResources(0, 1, RTTSRV.GetAddressOf());
+			context->PSSetShaderResources(1, 1, floorNSRV.GetAddressOf());
+			context->PSSetShaderResources(2, 1, shadowMap->m_ShadowSRV.GetAddressOf());
+
+			context->PSSetSamplers(0, 1, sampler.GetAddressOf());
+			context->PSSetSamplers(1, 1, samplerPCF.GetAddressOf());
+
+			// Draw the objects.
+			context->DrawIndexed(
+				m_indexCount,
+				0,
+				0
+			);
+
+		}
+
+
+
+		//DrawFloor
+		{
+			model = XMMatrixIdentity();
+			XMStoreFloat4x4(&m_constantBufferDataM.model, XMMatrixTranspose(model));
+
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferM.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->GSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferVP.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			context->PSSetShaderResources(0, 1, floorSRV.GetAddressOf());
+			context->PSSetShaderResources(1, 1, floorNSRV.GetAddressOf());
+
+			stride = sizeof(RobustVertex);
+			offset = 0;
+			context->IASetVertexBuffers(
+				0,
+				1,
+				m_vertexFloor.GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				m_indexFloor.Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderM.Get(),
+				nullptr,
+				0
+			);
+
+			context->GSSetShader(m_geometryShader.Get(), nullptr, 0);
+
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+			context->IASetInputLayout(m_inputLayout.Get());
+
+			context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
+
+
+			// Draw the objects.
+			context->DrawIndexed(
+				m_indexFloorCount,
+				0,
+				0
+			);
+		}
+
+
+
+
+
+		//DRAWPYRAMID
+		{
+			m_constantBufferDataM.model = pyramid.GetWorldMatrix();
+
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+			context->UpdateSubresource1(
+				m_constantBufferVP.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataVP,
+				0,
+				0,
+				0
+			);
+			context->UpdateSubresource1(
+				m_lightBuffer.Get(),
+				0,
+				NULL,
+				&m_lightBufferData,
+				0,
+				0,
+				0
+			);
+
+			// Each vertex is one instance of the VertexPositionColor struct.
+			context->IASetVertexBuffers(
+				0,
+				1,
+				pyramid.GetVertexBuffer().GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				pyramid.GetIndexBuffer().Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			context->IASetInputLayout(m_inputLayout.Get());
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderM.Get(),
+				nullptr,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferM.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Send the constant buffer to the graphics device.
+			context->GSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferVP.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Attach our pixel shader.
+			context->GSSetShader(
+				m_geometryShaderVP.Get(),
+				nullptr,
+				0
+			);
+
+			// Attach our pixel shader.
+			context->PSSetShader(
+				m_pixelShaderN.Get(),
+				nullptr,
+				0
+			);
+
+			context->PSSetConstantBuffers1(
+				0,
+				1,
+				m_lightBuffer.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			//TODO: camera position changes for each viewport
+			context->PSSetConstantBuffers1(
+				1,
+				1,
+				m_camBuffer.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+
+			context->PSSetShaderResources(0, 1, pyramid.GetSRV().GetAddressOf());
+			context->PSSetShaderResources(1, 1, floorNSRV.GetAddressOf());
+
+			context->PSSetSamplers(0, 1, sampler.GetAddressOf());
+
+			// Draw the objects.
+			context->DrawIndexed(
+				pyramid.GetIndices().size(),
+				0,
+				0
+			);
+
+		}
+
+
+		//Draw Goomba
+		{
+			m_constantBufferDataM.model = Goomba.GetWorldMatrix();
+
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+
+			context->PSSetShaderResources(0, 1, Goomba.GetSRV().GetAddressOf());
+			context->PSSetShaderResources(1, 1, Goomba.GetNormalMap().GetAddressOf());
+
+			stride = sizeof(RobustVertex);
+			offset = 0;
+			context->IASetVertexBuffers(
+				0,
+				1,
+				Goomba.GetVertexBuffer().GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				Goomba.GetIndexBuffer().Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+			context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
+			// Draw the objects.
+			context->DrawIndexed(
+				Goomba.GetIndices().size(),
+				0,
+				0
+			);
+		}
+
+
+		//Draw Spheres
+		{
+			m_constantInstanceData.view = m_constantBufferData.view;
+			m_constantInstanceData.projection = m_constantBufferData.projection;
+
+			context->UpdateSubresource1(
+				m_constantInstanceBuffer.Get(),
+				0,
+				NULL,
+				&m_constantInstanceData,
+				0,
+				0,
+				0
+			);
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderInstanced.Get(),
+				nullptr,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantInstanceBuffer.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			context->PSSetShaderResources(0, 1, Sphere.GetSRV().GetAddressOf());
+			context->PSSetShaderResources(1, 1, Sphere.GetNormalMap().GetAddressOf());
+
+			stride = sizeof(RobustVertex);
+			offset = 0;
+			context->IASetVertexBuffers(
+				0,
+				1,
+				Sphere.GetVertexBuffer().GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				Sphere.GetIndexBuffer().Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+
+			context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
+
+
+			// Draw the objects.
+			context->DrawIndexedInstanced(
+				Sphere.GetIndices().size(),
+				10,
+				0,
+				0,
+				0
+			);
+
+		}
+
+		//Draw Gunturret
+		{
+			m_constantBufferDataM.model = GunTurret.GetWorldMatrix();
+
+			// Attach our pixel shader.
+			context->PSSetShader(
+				m_pixelShaderNS.Get(),
+				nullptr,
+				0
+			);
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderM.Get(),
+				nullptr,
+				0
+			);
+
+			context->PSSetConstantBuffers1(
+				0,
+				1,
+				m_lightBuffer.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferM.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			context->UpdateSubresource1(
+				m_camBuffer.Get(),
+				0,
+				NULL,
+				&m_specBufferCamData,
+				0,
+				0,
+				0
+			);
+
+			context->PSSetShaderResources(0, 1, GunTurret.GetSRV().GetAddressOf());
+			context->PSSetShaderResources(1, 1, GunTurret.GetNormalMap().GetAddressOf());
+			context->PSSetShaderResources(2, 1, GunTurret.GetSpecularMap().GetAddressOf());
+			context->PSSetShaderResources(3, 1, shadowMap->m_ShadowSRV.GetAddressOf());
+
+			stride = sizeof(RobustVertex);
+			offset = 0;
+			context->IASetVertexBuffers(
+				0,
+				1,
+				GunTurret.GetVertexBuffer().GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				GunTurret.GetIndexBuffer().Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+
+			context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
+
+
+			// Draw the objects.
+			context->DrawIndexed(
+				GunTurret.GetIndices().size(),
+				0,
+				0
+			);
+
+		}
 
 	}
 
 
-	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-	context->RSSetState(m_rasterizerStateCW.Get());
-	//DrawCube
-	{
-		model = XMMatrixTranslation(0.0f, 0.5f, 0.0f);
-		model = XMMatrixScaling(0.51f, 0.51f, 0.51f)* model;
-		XMStoreFloat4x4(&m_constantBufferDataM.model, XMMatrixTranspose(cubeWorld));
 
-		// Prepare the constant buffer to send it to the graphics device.
-		context->UpdateSubresource1(
-			m_constantBufferM.Get(),
-			0,
-			NULL,
-			&m_constantBufferDataM,
-			0,
-			0,
-			0
-		);
-		context->UpdateSubresource1(
-			m_constantBufferVP.Get(),
-			0,
-			NULL,
-			&m_constantBufferDataVP,
-			0,
-			0,
-			0
-		);
-		context->UpdateSubresource1(
-			m_lightBuffer.Get(),
-			0,
-			NULL,
-			&m_lightBufferData,
-			0,
-			0,
-			0
-		);
-
-		// Each vertex is one instance of the VertexPositionColor struct.
-		context->IASetVertexBuffers(
-			0,
-			1,
-			m_vertexBuffer.GetAddressOf(),
-			&stride,
-			&offset
-		);
-
-		context->IASetIndexBuffer(
-			m_indexBuffer.Get(),
-			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
-			0
-		);
-
-		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-		context->IASetInputLayout(m_inputLayout.Get());
-
-		// Attach our vertex shader.
-		context->VSSetShader(
-			m_vertexShaderM.Get(),
-			nullptr,
-			0
-		);
-
-		// Send the constant buffer to the graphics device.
-		context->VSSetConstantBuffers1(
-			0,
-			1,
-			m_constantBufferM.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
-		// Send the constant buffer to the graphics device.
-		context->GSSetConstantBuffers1(
-			0,
-			1,
-			m_constantBufferVP.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
-		// Attach our pixel shader.
-		context->GSSetShader(
-			m_geometryShaderVP.Get(),
-			nullptr,
-			0
-		);
-
-		// Attach our pixel shader.
-		context->PSSetShader(
-			m_pixelShaderN.Get(),
-			nullptr,
-			0
-		);
-
-		context->PSSetConstantBuffers1(
-			0,
-			1,
-			m_lightBuffer.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
-
-		context->PSSetConstantBuffers1(
-			1,
-			1,
-			m_camBuffer.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
-
-
-		context->PSSetShaderResources(0, 1, RTTSRV.GetAddressOf());
-		context->PSSetShaderResources(1, 1, floorNSRV.GetAddressOf());
-
-		context->PSSetSamplers(0, 1, sampler.GetAddressOf());
-
-		// Draw the objects.
-		context->DrawIndexed(
-			m_indexCount,
-			0,
-			0
-		);
-
-	}
-
-
-
-	//DrawFloor
-	{
-		model = XMMatrixIdentity();
-		XMStoreFloat4x4(&m_constantBufferDataM.model, XMMatrixTranspose(model));
-
-		// Prepare the constant buffer to send it to the graphics device.
-		context->UpdateSubresource1(
-			m_constantBufferM.Get(),
-			0,
-			NULL,
-			&m_constantBufferDataM,
-			0,
-			0,
-			0
-		);
-
-		// Send the constant buffer to the graphics device.
-		context->VSSetConstantBuffers1(
-			0,
-			1,
-			m_constantBufferM.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
-
-		// Send the constant buffer to the graphics device.
-		context->GSSetConstantBuffers1(
-			0,
-			1,
-			m_constantBufferVP.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
-
-		context->PSSetShaderResources(0, 1, floorSRV.GetAddressOf());
-		context->PSSetShaderResources(1, 1, floorNSRV.GetAddressOf());
-
-		stride = sizeof(RobustVertex);
-		offset = 0;
-		context->IASetVertexBuffers(
-			0,
-			1,
-			m_vertexFloor.GetAddressOf(),
-			&stride,
-			&offset
-		);
-
-		context->IASetIndexBuffer(
-			m_indexFloor.Get(),
-			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
-			0
-		);
-
-		// Attach our vertex shader.
-		context->VSSetShader(
-			m_vertexShaderM.Get(),
-			nullptr,
-			0
-		);
-
-		context->GSSetShader(m_geometryShader.Get(), nullptr, 0);
-
-		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-
-		context->IASetInputLayout(m_inputLayout.Get());
-
-		context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
-
-
-		// Draw the objects.
-		context->DrawIndexed(
-			m_indexFloorCount,
-			0,
-			0
-		);
-	}
-
-
-
-
-
-	//DRAWPYRAMID
-	{
-		m_constantBufferDataM.model = pyramid.GetWorldMatrix();
-
-		// Prepare the constant buffer to send it to the graphics device.
-		context->UpdateSubresource1(
-			m_constantBufferM.Get(),
-			0,
-			NULL,
-			&m_constantBufferDataM,
-			0,
-			0,
-			0
-		);
-		context->UpdateSubresource1(
-			m_constantBufferVP.Get(),
-			0,
-			NULL,
-			&m_constantBufferDataVP,
-			0,
-			0,
-0
-);
-context->UpdateSubresource1(
-	m_lightBuffer.Get(),
-	0,
-	NULL,
-	&m_lightBufferData,
-	0,
-	0,
-	0
-);
-
-// Each vertex is one instance of the VertexPositionColor struct.
-context->IASetVertexBuffers(
-	0,
-	1,
-	pyramid.GetVertexBuffer().GetAddressOf(),
-	&stride,
-	&offset
-);
-
-context->IASetIndexBuffer(
-	pyramid.GetIndexBuffer().Get(),
-	DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
-	0
-);
-
-context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-context->IASetInputLayout(m_inputLayout.Get());
-
-// Attach our vertex shader.
-context->VSSetShader(
-	m_vertexShaderM.Get(),
-	nullptr,
-	0
-);
-
-// Send the constant buffer to the graphics device.
-context->VSSetConstantBuffers1(
-	0,
-	1,
-	m_constantBufferM.GetAddressOf(),
-	nullptr,
-	nullptr
-);
-// Send the constant buffer to the graphics device.
-context->GSSetConstantBuffers1(
-	0,
-	1,
-	m_constantBufferVP.GetAddressOf(),
-	nullptr,
-	nullptr
-);
-// Attach our pixel shader.
-context->GSSetShader(
-	m_geometryShaderVP.Get(),
-	nullptr,
-	0
-);
-
-// Attach our pixel shader.
-context->PSSetShader(
-	m_pixelShaderN.Get(),
-	nullptr,
-	0
-);
-
-context->PSSetConstantBuffers1(
-	0,
-	1,
-	m_lightBuffer.GetAddressOf(),
-	nullptr,
-	nullptr
-);
-
-//TODO: camera position changes for each viewport
-context->PSSetConstantBuffers1(
-	1,
-	1,
-	m_camBuffer.GetAddressOf(),
-	nullptr,
-	nullptr
-);
-
-
-context->PSSetShaderResources(0, 1, pyramid.GetSRV().GetAddressOf());
-context->PSSetShaderResources(1, 1, floorNSRV.GetAddressOf());
-
-context->PSSetSamplers(0, 1, sampler.GetAddressOf());
-
-// Draw the objects.
-context->DrawIndexed(
-	pyramid.GetIndices().size(),
-	0,
-	0
-);
-
-	}
-
-
-	//Draw Goomba
-	{
-		m_constantBufferDataM.model = Goomba.GetWorldMatrix();
-
-		context->UpdateSubresource1(
-			m_constantBufferM.Get(),
-			0,
-			NULL,
-			&m_constantBufferDataM,
-			0,
-			0,
-			0
-		);
-
-		context->PSSetShaderResources(0, 1, Goomba.GetSRV().GetAddressOf());
-		context->PSSetShaderResources(1, 1, Goomba.GetNormalMap().GetAddressOf());
-
-		stride = sizeof(RobustVertex);
-		offset = 0;
-		context->IASetVertexBuffers(
-			0,
-			1,
-			Goomba.GetVertexBuffer().GetAddressOf(),
-			&stride,
-			&offset
-		);
-
-		context->IASetIndexBuffer(
-			Goomba.GetIndexBuffer().Get(),
-			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
-			0
-		);
-		context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
-		// Draw the objects.
-		context->DrawIndexed(
-			Goomba.GetIndices().size(),
-			0,
-			0
-		);
-	}
-
-
-	//Draw Spheres
-	{
-		m_constantInstanceData.view = m_constantBufferData.view;
-		m_constantInstanceData.projection = m_constantBufferData.projection;
-
-		context->UpdateSubresource1(
-			m_constantInstanceBuffer.Get(),
-			0,
-			NULL,
-			&m_constantInstanceData,
-			0,
-			0,
-			0
-		);
-
-		// Attach our vertex shader.
-		context->VSSetShader(
-			m_vertexShaderInstanced.Get(),
-			nullptr,
-			0
-		);
-
-		// Send the constant buffer to the graphics device.
-		context->VSSetConstantBuffers1(
-			0,
-			1,
-			m_constantInstanceBuffer.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
-
-		context->PSSetShaderResources(0, 1, Sphere.GetSRV().GetAddressOf());
-		context->PSSetShaderResources(1, 1, Sphere.GetNormalMap().GetAddressOf());
-
-		stride = sizeof(RobustVertex);
-		offset = 0;
-		context->IASetVertexBuffers(
-			0,
-			1,
-			Sphere.GetVertexBuffer().GetAddressOf(),
-			&stride,
-			&offset
-		);
-
-		context->IASetIndexBuffer(
-			Sphere.GetIndexBuffer().Get(),
-			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
-			0
-		);
-
-		context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
-
-
-		// Draw the objects.
-		context->DrawIndexedInstanced(
-			Sphere.GetIndices().size(),
-			10,
-			0,
-			0,
-			0
-		);
-
-	}
-
-	//Draw Gunturret
-	{
-		m_constantBufferDataM.model = GunTurret.GetWorldMatrix();
-
-		// Attach our pixel shader.
-		context->PSSetShader(
-			m_pixelShaderNS.Get(),
-			nullptr,
-			0
-		);
-
-		// Attach our vertex shader.
-		context->VSSetShader(
-			m_vertexShaderM.Get(),
-			nullptr,
-			0
-		);
-
-		context->PSSetConstantBuffers1(
-			0,
-			1,
-			m_lightBuffer.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
-
-		// Prepare the constant buffer to send it to the graphics device.
-		context->UpdateSubresource1(
-			m_constantBufferM.Get(),
-			0,
-			NULL,
-			&m_constantBufferDataM,
-			0,
-			0,
-			0
-		);
-
-		// Send the constant buffer to the graphics device.
-		context->VSSetConstantBuffers1(
-			0,
-			1,
-			m_constantBufferM.GetAddressOf(),
-			nullptr,
-			nullptr
-		);
-
-		context->UpdateSubresource1(
-			m_camBuffer.Get(),
-			0,
-			NULL,
-			&m_specBufferCamData,
-			0,
-			0,
-			0
-		);
-
-		context->PSSetShaderResources(0, 1, GunTurret.GetSRV().GetAddressOf());
-		context->PSSetShaderResources(1, 1, GunTurret.GetNormalMap().GetAddressOf());
-		context->PSSetShaderResources(2, 1, GunTurret.GetSpecularMap().GetAddressOf());
-
-		stride = sizeof(RobustVertex);
-		offset = 0;
-		context->IASetVertexBuffers(
-			0,
-			1,
-			GunTurret.GetVertexBuffer().GetAddressOf(),
-			&stride,
-			&offset
-		);
-
-		context->IASetIndexBuffer(
-			GunTurret.GetIndexBuffer().Get(),
-			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
-			0
-		);
-
-		context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
-
-
-		// Draw the objects.
-		context->DrawIndexed(
-			GunTurret.GetIndices().size(),
-			0,
-			0
-		);
-
-	}
 }
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources()
@@ -1223,14 +1579,22 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	auto loadVSTask = DX::ReadDataAsync(L"SampleVertexShader.cso");
 	auto loadVSMTask = DX::ReadDataAsync(L"VertexShaderM.cso");
 	auto loadVSSkyTask = DX::ReadDataAsync(L"VSSkybox.cso");
+	auto loadVSSnowTask = DX::ReadDataAsync(L"VSSnow.cso");
 	auto loadVSInstanceTask = DX::ReadDataAsync(L"VSInstanced.cso");
 	auto loadGSTask = DX::ReadDataAsync(L"GeometryShader.cso");
 	auto loadGSVPTask = DX::ReadDataAsync(L"GeometryShaderVP.cso");
 	auto loadGSSkyTask = DX::ReadDataAsync(L"GSSkybox.cso");
+	auto loadGSSnowTask = DX::ReadDataAsync(L"GSSnow.cso");
 	auto loadPSTask = DX::ReadDataAsync(L"SamplePixelShader.cso");
 	auto loadPSNTask = DX::ReadDataAsync(L"PSNormalMap.cso");
 	auto loadPSNSTask = DX::ReadDataAsync(L"PSNormalSpecular.cso");
 	auto loadPSSkyTask = DX::ReadDataAsync(L"PSSkybox.cso");
+	auto loadPSShadowTask = DX::ReadDataAsync(L"PSShadow.cso");
+	auto loadPSSnowTask = DX::ReadDataAsync(L"PSSnow.cso");
+	auto loadCSSnowTask = DX::ReadDataAsync(L"CSSnow.cso");
+
+
+	shadowMap = new ShadowMap(m_deviceResources->GetD3DDevice(), 2048, 2048);
 
 	// After the vertex shader file is loaded, create the shader and input layout.
 	auto createVSTask = loadVSTask.then([this](const std::vector<byte>& fileData) {
@@ -1311,6 +1675,39 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		//);
 	});
 
+	auto createVSSnowTask = loadVSSnowTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateVertexShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				&m_vertexShaderSnow
+			)
+		);
+
+
+		static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "VELOCITY", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "SIZE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "AGE", 0, DXGI_FORMAT_R32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TYPE", 0, DXGI_FORMAT_R32_UINT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		};
+
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateInputLayout(
+				vertexDesc,
+				ARRAYSIZE(vertexDesc),
+				&fileData[0],
+				fileData.size(),
+				&m_inputLayoutParticle
+			)
+		);
+	});
+
 	auto createVSInstanceTask = loadVSInstanceTask.then([this](const std::vector<byte>& fileData) {
 		DX::ThrowIfFailed(
 			m_deviceResources->GetD3DDevice()->CreateVertexShader(
@@ -1380,6 +1777,17 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 				fileData.size(),
 				nullptr,
 				&m_geometryShaderSky
+			)
+		);
+	});
+
+	auto createGSSnowTask = loadGSSnowTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateGeometryShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				&m_geometryShaderSnow
 			)
 		);
 	});
@@ -1469,8 +1877,41 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		);
 	});
 
+	auto createPSSnowTask = loadPSSnowTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreatePixelShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				&m_pixelShaderSnow
+			)
+		);
+	});
+
+	auto createCSSnowTask = loadCSSnowTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateComputeShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				m_computeShaderSnow.GetAddressOf()
+			)
+		);
+	});
+
+	auto createPSShadowTask = loadPSShadowTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreatePixelShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				m_pixelShaderShadow.GetAddressOf()
+			)
+		);
+	});
+
 	// Once both shaders are loaded, create the mesh.
-	auto CreateShaders = (createPSTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask);
+	auto CreateShaders = (createPSTask && createCSSnowTask && createPSSnowTask && createGSSnowTask && createVSSnowTask && createPSShadowTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask);
 
 	auto createCubeTask = CreateShaders.then([this]() {
 
@@ -1686,6 +2127,20 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 	m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &samplerFloor);
 
+
+	samplerDesc = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
+	samplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+	samplerDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
+	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+	samplerDesc.BorderColor[0] = 0.0f;
+	samplerDesc.BorderColor[1] = 0.0f;
+	samplerDesc.BorderColor[2] = 0.0f;
+	samplerDesc.BorderColor[3] = 0.0f;
+
+	m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &samplerPCF);
+
 	// Once the cube is loaded, the object is ready to be rendered.
 	(createCubeTask && createPyramidTask && createGoombaTask && createFloorTask &&createGunTurretTask && createSkyCubeTask && createSphereTask).then([this]() {
 		m_loadingComplete = true;
@@ -1698,15 +2153,19 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	m_vertexShader.Reset();
 	m_vertexShaderM.Reset();
 	m_vertexShaderSky.Reset();
+	m_vertexShaderSnow.Reset();
 	m_vertexShaderInstanced.Reset();
 	m_inputLayout.Reset();
+	m_inputLayoutParticle.Reset();
 	m_geometryShader.Reset();
 	m_geometryShaderVP.Reset();
 	m_geometryShaderSky.Reset();
+	m_geometryShaderSnow.Reset();
 	m_pixelShader.Reset();
 	m_pixelShaderN.Reset();
 	m_pixelShaderNS.Reset();
 	m_pixelShaderSky.Reset();
+	m_pixelShaderSnow.Reset();
 	m_constantBuffer.Reset();
 	m_constantBufferM.Reset();
 	m_constantBufferVP.Reset();
@@ -1720,6 +2179,7 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	m_vertexFloor.Reset();
 	sampler.Reset();
 	samplerFloor.Reset();
+	samplerPCF.Reset();
 	cubeSRV.Reset();
 	floorSRV.Reset();
 	floorNSRV.Reset();
@@ -1736,6 +2196,8 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	GunTurret.Release();
 	Sphere.Release();
 	cube.Release();
+
+	delete shadowMap;
 }
 
 Light CreateDirectionalLight(XMFLOAT4 direction, XMFLOAT4 color)
@@ -1743,7 +2205,7 @@ Light CreateDirectionalLight(XMFLOAT4 direction, XMFLOAT4 color)
 	Light tempLight;
 	tempLight.color = color;
 	tempLight.normal = direction;
-	tempLight.ratio = XMFLOAT4(0.0f, 0.0f, 0.0f, 1);
+	tempLight.ratio = XMFLOAT4(0.0f, 0.0f, 300.0f, 1);
 	tempLight.position = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
 	return tempLight;
 }

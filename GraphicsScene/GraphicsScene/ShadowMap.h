@@ -15,6 +15,7 @@ public:
 
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_ShadowSRV;
 	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_ShadowDSV;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView1> m_ShadowRTV;
 
 	ShadowMap();
 

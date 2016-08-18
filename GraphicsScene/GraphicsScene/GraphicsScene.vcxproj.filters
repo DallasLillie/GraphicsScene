@@ -131,6 +131,9 @@
     <Image Include="DarkSnowy.dds">
       <Filter>Assets\Textures</Filter>
     </Image>
+    <Image Include="snowflake.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -182,6 +185,21 @@
       <Filter>Content</Filter>
     </FxCompile>
     <FxCompile Include="GSSkybox.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\PSShadow.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="GSSnow.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="VSSnow.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\PSSnow.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="CSSnow.hlsl">
       <Filter>Content</Filter>
     </FxCompile>
   </ItemGroup>

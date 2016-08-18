@@ -21,13 +21,13 @@ struct PixelShaderInput
 	float4 tangent : TANGENT;
 	float4 biTangent :BTANGENT;
 	float3 normal : NORMAL;
-	//float4 projTex : TEXCOORD1;
+	float4 projTex : TEXCOORD1;
 };
 
 texture2D baseTexture : register(t0);
 texture2D normalTexture : register(t1);
-//texture2D shadowMap : register(t2);
 texture2D specularTexture : register(t2);
+texture2D shadowMap : register(t3);
 
 SamplerState filter : register(s0);
 
@@ -103,13 +103,15 @@ float4 main(PixelShaderInput input) : SV_TARGET
 		}
 	}
 
-	//input.projTex.xyz /= input.projTex.w;
-	//input.projTex.xy = (input.projTex.xy + 1)*0.5f;
+	input.projTex.xyz /= input.projTex.w;
+	input.projTex.xy = (input.projTex.xy + 1)*0.5f;
+	input.projTex.y *=-1.0f;
 
-	//float ourDepth = input.projTex.z;
-	//float sampleDepth = shadowMap.Sample(filter, input.projTex.xy);
+	float ourDepth = input.projTex.z;
+	float sampleDepth = shadowMap.Sample(filter, input.projTex.xy);
+	float depthBias = 0.0005f;
 
-	//float shadowFactor = (ourDepth <= sampleDepth);
+	float shadowFactor = (ourDepth <= sampleDepth+depthBias);
 
-	return saturate(baseColor *float4(lightColor/**shadowFactor*/, 1.0f));
+	return saturate(baseColor *float4((lightColor*shadowFactor)+0.1f, 1.0f));
 }

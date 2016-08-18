@@ -6,7 +6,7 @@ cbuffer ViewProjectionConstantBuffer : register(b0)
 
 cbuffer ViewProjectionLightBuffer : register(b1)
 {
-	matrix viewL[6];
+	matrix viewL;
 	matrix projectionL;
 };
 
@@ -28,7 +28,7 @@ struct GSOutput
 	float4 tangent : TANGENT;
 	float4 biTangent :BTANGENT;
 	float3 normal : NORMAL;
-	//float4 projTex : TEXCOORD1;
+	float4 projTex : TEXCOORD1;
 	uint viewport : SV_ViewportArrayIndex;
 };
 
@@ -51,11 +51,14 @@ void main(
 			element.biTangent = input[j].biTangent;
 			element.normal = input[j].normal;
 
-			//element.projTex = element.pos;
-			
 			element.pos = mul(element.pos, view[i]);
 			element.pos = mul(element.pos, projection[i]);
 
+			//element.projTex = element.pos;
+
+			element.projTex = mul(input[j].pos, viewL);
+			element.projTex = mul(element.projTex, projectionL);
+			
 			output.Append(element);
 		}
 	}

@@ -33,7 +33,6 @@ namespace GraphicsScene
 
 	private:
 		void Rotate(float radians);
-		void Sample3DSceneRenderer::Translate(float xOffset, float yOffset, float zOffset);
 
 	private:
 		// Cached pointer to device resources.
@@ -41,6 +40,7 @@ namespace GraphicsScene
 
 		// Direct3D resources for cube geometry.
 		Microsoft::WRL::ComPtr<ID3D11InputLayout>			m_inputLayout;
+		Microsoft::WRL::ComPtr<ID3D11InputLayout>			m_inputLayoutParticle;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_vertexBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_vertexFloor;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_indexBuffer;
@@ -48,14 +48,19 @@ namespace GraphicsScene
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>			m_vertexShader;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>			m_vertexShaderM;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>			m_vertexShaderSky;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader>			m_vertexShaderSnow;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>			m_vertexShaderInstanced;
 		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_geometryShader;
 		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_geometryShaderVP;
 		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_geometryShaderSky;
+		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_geometryShaderSnow;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShader;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderN;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderNS;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderSky;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderShadow;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderSnow;
+		Microsoft::WRL::ComPtr<ID3D11ComputeShader>			m_computeShaderSnow;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBufferM;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBufferVP;
@@ -68,8 +73,6 @@ namespace GraphicsScene
 		Microsoft::WRL::ComPtr<ID3D11RenderTargetView1>		m_RTTRenderTargetView;
 		Microsoft::WRL::ComPtr<ID3D11DepthStencilView>		m_RTTDepthStencilView;
 		
-		//ShadowMap shadowMap;
-
 		Microsoft::WRL::ComPtr<ID3D11Texture2D>			m_RTTBackBuffer;
 		D3D11_VIEWPORT										m_RTTViewport;
 
@@ -94,6 +97,7 @@ namespace GraphicsScene
 		//Samplers
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> sampler;
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerFloor;
+		Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerPCF;
 
 		//SRVs
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> cubeSRV;
@@ -103,6 +107,9 @@ namespace GraphicsScene
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> flatNormalMapSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> SkyCubeSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> RTTSRV;
+
+		//ShadowMaps
+		ShadowMap *shadowMap;
 
 		//Models
 		Model cube;
