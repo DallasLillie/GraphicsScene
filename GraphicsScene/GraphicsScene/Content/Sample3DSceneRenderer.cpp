@@ -115,7 +115,7 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 		tDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 		tDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 		tDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		tDesc.Height = lround(m_deviceResources->GetLogicalSize().Height);
+		tDesc.Height = lround(m_deviceResources->GetLogicalSize().Height*0.5f);
 		tDesc.MipLevels = 1;
 		tDesc.SampleDesc.Count = 1;
 		tDesc.SampleDesc.Quality = 0;
@@ -130,7 +130,7 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 		CD3D11_TEXTURE2D_DESC depthStencilDesc(
 			DXGI_FORMAT_D24_UNORM_S8_UINT,
 			lround(m_deviceResources->GetLogicalSize().Width),
-			lround(m_deviceResources->GetLogicalSize().Height),
+			lround(m_deviceResources->GetLogicalSize().Height*0.5f),
 			1, // This depth stencil view has only one texture.
 			1, // Use a single mipmap level.
 			D3D11_BIND_DEPTH_STENCIL
@@ -158,7 +158,7 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 			0.0f,
 			0.0f,
 			m_deviceResources->GetLogicalSize().Width,
-			m_deviceResources->GetLogicalSize().Height
+			m_deviceResources->GetLogicalSize().Height*0.5f
 		);
 
 	}
@@ -3004,7 +3004,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	//TODO: make a loop through all models in a models array, make an array of modefilenames and texturefilenames that is read from a file(After Project Task)
 	auto createFountainTask = CreateShaders.then([this]()
 	{
-		fountain.CreateModel(m_deviceResources, "fountain.obj", L"Fountain_D.dds",L"Fountain_N.dds");
+		//fountain.CreateModel(m_deviceResources, "fountain.obj", L"Fountain_D.dds",L"Fountain_N.dds");
 	});
 
 	auto createGrappleGirlTask = CreateShaders.then([this]()
@@ -3014,17 +3014,17 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 	auto createGunTurretTask = CreateShaders.then([this]()
 	{
-		GunTurret.CreateModel(m_deviceResources, "GunTurret01.obj", L"T_HeavyTurret_D.dds", L"T_HeavyTurret_N.dds", L"T_HeavyTurret_S.dds");
+		//GunTurret.CreateModel(m_deviceResources, "GunTurret01.obj", L"T_HeavyTurret_D.dds", L"T_HeavyTurret_N.dds", L"T_HeavyTurret_S.dds");
 	});
 
 	auto createStatueTask = CreateShaders.then([this]()
 	{
-		Statue.CreateModel(m_deviceResources, "statue.obj", L"granite.dds", L"T_HeavyTurret_N.dds");
+		//Statue.CreateModel(m_deviceResources, "statue.obj", L"granite.dds", L"T_HeavyTurret_N.dds");
 	});
 
 	auto createKnightTask = CreateShaders.then([this]()
 	{
-		Knight.CreateModel(m_deviceResources, "knight_sword.obj", L"armor_default_color.dds", L"armor_default_nmap.dds", L"armor_default_rough.dds");
+		//Knight.CreateModel(m_deviceResources, "knight_sword.obj", L"armor_default_color.dds", L"armor_default_nmap.dds", L"armor_default_rough.dds");
 	});
 
 	auto createSkyCubeTask = CreateShaders.then([this]()
@@ -3038,7 +3038,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 	auto createSphereTask = CreateShaders.then([this]()
 	{
-		Sphere.CreateModel(m_deviceResources, "Sphere.obj", L"paint.dds", L"FieldstoneBump.dds");
+		//Sphere.CreateModel(m_deviceResources, "Sphere.obj", L"paint.dds", L"FieldstoneBump.dds");
 	});
 
 	auto createSnowflakesTask = CreateShaders.then([this]()
