@@ -564,17 +564,22 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	XMVECTOR lightNorm = XMLoadFloat4(&m_lightBufferData.lights[0].normal);
 	if (buttons['L'])
 	{
-		directionalLight = XMMatrixRotationAxis(XMVECTOR(XMLoadFloat3(&XMFLOAT3(0.0f,1.0f,0.0f))),XMConvertToRadians(0.5));
+		directionalLight = XMMatrixMultiply(directionalLight,XMMatrixRotationAxis(XMVECTOR(XMLoadFloat3(&XMFLOAT3(0.0f,1.0f,0.0f))),XMConvertToRadians(0.5)));
 	}
 	if (buttons['K'])
 	{
-		directionalLight = XMMatrixRotationAxis(XMVECTOR(XMLoadFloat3(&XMFLOAT3(0.0f, 1.0f, 0.0f))), XMConvertToRadians(-0.5));
+		directionalLight = XMMatrixMultiply(directionalLight, XMMatrixRotationAxis(XMVECTOR(XMLoadFloat3(&XMFLOAT3(0.0f, 1.0f, 0.0f))), XMConvertToRadians(-0.5)));
 	}
 	//directionalLight = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(1)), directionalLight);
 	//directionalLight = XMMatrixTranspose(directionalLight);
 	lightNorm = XMVector4Transform(lightNorm, directionalLight);
-	lightNorm = XMVector4Normalize(lightNorm);
+	lightNorm = XMVector3Normalize(lightNorm);
 	XMStoreFloat4(&m_lightBufferData.lights[0].normal, lightNorm);
+
+	XMVECTOR lightPos = XMLoadFloat4(&m_lightBufferData.lights[0].position);
+	lightPos = XMVector4Transform(lightPos, directionalLight);
+	XMStoreFloat4(&m_lightBufferData.lights[0].position, lightPos);
+	m_lightBufferData.lights[0].position.w = 0.0f;
 
 	//TODO: both viewports
 	m_specBufferCamData.cameraPosition.x = camera._41;
@@ -594,14 +599,16 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 
 	float dimension = 30;
 
+	XMFLOAT4X4 rotation;
+	XMStoreFloat4x4(&rotation, directionalLight);
 	if (buttons['Z'])
 	{
-		m_lightBufferDataVP.UpdateView(m_lightBufferData.lights[3], dimension, dimension, 2048);
+		m_lightBufferDataVP.UpdateView(m_lightBufferData.lights[3], dimension, dimension, 2048, rotation);
 		m_lightBufferDataVP.UpdateProjection(m_lightBufferData.lights[3], dimension, dimension);
 	}
 	else
 	{
-		m_lightBufferDataVP.UpdateView(m_lightBufferData.lights[0], dimension, dimension,2048);
+		m_lightBufferDataVP.UpdateView(m_lightBufferData.lights[0], dimension, dimension,2048, rotation);
 		m_lightBufferDataVP.UpdateProjection(m_lightBufferData.lights[0], dimension, dimension);
 	}
 	mouse_move = false;/*Reset*/
@@ -3206,6 +3213,12 @@ Light CreateDirectionalLight(XMFLOAT4 direction, XMFLOAT4 color)
 	tempLight.normal = direction;
 	tempLight.ratio = XMFLOAT4(0.0f, 0.0f, 300.0f, 1);
 	tempLight.position = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+
+	tempLight.position.x = ((tempLight.ratio.z - NEAR_PLANE)*0.5f) - (tempLight.normal.x * 30 *0.5f);
+	tempLight.position.y = ((tempLight.ratio.z - NEAR_PLANE)*0.5f) - (tempLight.normal.y * 30 *0.5f);
+	tempLight.position.z = ((tempLight.ratio.z - NEAR_PLANE)*0.5f) - (tempLight.normal.z * 30 *0.5f);
+	//tempLight.position.w = 1;
+
 	return tempLight;
 }
 

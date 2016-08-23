@@ -76,7 +76,7 @@ namespace GraphicsScene
 		DirectX::XMFLOAT4X4 view;
 		DirectX::XMFLOAT4X4 projection;
 
-		void UpdateView(Light& _light, float _width, float _height,float _smSize)
+		void UpdateView(Light& _light, float _width, float _height,float _smSize,DirectX::XMFLOAT4X4 rotation)
 		{
 			DirectX::XMMATRIX tView = DirectX::XMMatrixIdentity();
 
@@ -91,11 +91,14 @@ namespace GraphicsScene
 				xAxis = DirectX::XMVector3Normalize(xAxis);
 				DirectX::XMVECTOR yAxis = DirectX::XMVector3Cross(zAxis, xAxis);
 				yAxis = DirectX::XMVector3Normalize(yAxis);
-				DirectX::XMVECTOR pos;
-				pos.m128_f32[0] = ((_light.ratio.z - NEAR_PLANE)*0.5f) - (zAxis.m128_f32[0] * _width *0.5f);
-				pos.m128_f32[1] = ((_light.ratio.z - NEAR_PLANE)*0.5f) - (zAxis.m128_f32[1] * _width *0.5f);
-				pos.m128_f32[2] = ((_light.ratio.z - NEAR_PLANE)*0.5f) - (zAxis.m128_f32[2] * _width *0.5f);
-				pos.m128_f32[3] = 1;
+				DirectX::XMVECTOR pos = XMLoadFloat4(&_light.position);
+				pos.m128_f32[3] = 1.0f;
+
+				DirectX::XMMATRIX XMRotation = DirectX::XMLoadFloat4x4(&rotation);
+				//XMRotation = DirectX::XMMatrixMultiply(XMRotation,DirectX::XMMatrixTranslation(pos.m128_f32[0],pos.m128_f32[1],pos.m128_f32[2]));
+
+
+
 				tView = DirectX::XMMATRIX(xAxis, yAxis, zAxis, pos);
 				break;
 			}
