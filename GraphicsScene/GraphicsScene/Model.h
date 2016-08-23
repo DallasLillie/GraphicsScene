@@ -85,6 +85,7 @@ public:
 	//void Draw();
 
 	void CalculateTangents();
+	void CalculateNormals();
 
 	void Release();
 

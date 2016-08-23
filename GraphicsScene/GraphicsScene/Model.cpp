@@ -282,6 +282,7 @@ bool Model::LoadOBJ()
 	for (unsigned int i = 0; i < vertexIndices.size(); i++)
 	{
 		RobustVertex tempVertex;
+		ZeroMemory(&tempVertex, sizeof(tempVertex));
 		unsigned int vertexIndex = vertexIndices[i];
 		XMFLOAT3 vertex = vertices[vertexIndex - 1];
 		tempVertex.pos = vertex;
@@ -294,13 +295,48 @@ bool Model::LoadOBJ()
 		XMFLOAT3 norm = normals[normalIndex - 1];
 		tempVertex.normal = norm;
 
-		tempVertex.tangent = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
-
 		//tempVertex.pos.x *= -1;
 		//tempVertex.normal.x *= -1;
+		bool unique = true;
+		unsigned int index = i;
+		for (unsigned int j = 0; j < m_vertices.size(); ++j)
+		{
+			if (
+				tempVertex.pos.x == m_vertices[j].pos.x &&
+				tempVertex.pos.y == m_vertices[j].pos.y &&
+				tempVertex.pos.z == m_vertices[j].pos.z
+				)
+			{
+				if (tempVertex.normal.x == m_vertices[j].normal.x &&
+					tempVertex.normal.y == m_vertices[j].normal.y &&
+					tempVertex.normal.z == m_vertices[j].normal.z &&
+					tempVertex.texCoords.x == m_vertices[j].texCoords.x &&
+					tempVertex.texCoords.y == m_vertices[j].texCoords.y
+					)
+				{
+					unique = false;
+					index = j;
+					break;
+				}
+				
 
-		m_vertices.push_back(tempVertex);
-		m_indices.push_back(i);
+				//tempVertex.normal.x = (m_vertices[j].normal.x + tempVertex.normal.x)*0.5f;
+				//tempVertex.normal.y = (m_vertices[j].normal.y + tempVertex.normal.y)*0.5f;
+				//tempVertex.normal.z = (m_vertices[j].normal.z + tempVertex.normal.z)*0.5f;
+
+			}
+
+		}
+
+		if (unique)
+		{
+			m_vertices.push_back(tempVertex);
+			m_indices.push_back(m_vertices.size()-1);
+		}
+		else
+		{
+			m_indices.push_back(index);
+		}
 	}
 }
 
@@ -325,9 +361,10 @@ bool Model::LoadSpecularMap()
 void Model::CalculateTangents()
 {
 
+	CalculateNormals();
+
 	for (unsigned int  i = 0; i < m_indices.size(); i+=3)
 	{
-		//TODO:: Average Tangents
 		XMFLOAT3 tempVert1 = m_vertices[m_indices[i]].pos;
 		XMFLOAT3 tempVert2 = m_vertices[m_indices[i+1]].pos;
 		XMFLOAT3 tempVert3 = m_vertices[m_indices[i+2]].pos;
@@ -353,11 +390,11 @@ void Model::CalculateTangents()
 		float ratio = 1.0f / (texEdges1.x * texEdges2.y - texEdges2.x * texEdges1.y);
 
 		XMFLOAT3 uDirection = XMFLOAT3((texEdges2.y * vertEdges1.x - texEdges1.y * vertEdges2.x) * ratio,
-							  (texEdges2.y * vertEdges1.y - texEdges1.y * vertEdges2.y) * ratio,
-							  (texEdges2.y * vertEdges1.z - texEdges1.y * vertEdges2.z) * ratio );
-		XMFLOAT3 vDirection = XMFLOAT3((texEdges1.x * vertEdges1.x - texEdges2.x * vertEdges2.x) * ratio,
-									   (texEdges1.x * vertEdges1.y - texEdges2.x * vertEdges2.y) * ratio,
-									   (texEdges1.x * vertEdges1.z - texEdges2.x * vertEdges2.z) * ratio);
+									   (texEdges2.y * vertEdges1.y - texEdges1.y * vertEdges2.y) * ratio,
+									   (texEdges2.y * vertEdges1.z - texEdges1.y * vertEdges2.z) * ratio );
+		XMFLOAT3 vDirection = XMFLOAT3((texEdges1.x * vertEdges2.x - texEdges2.x * vertEdges1.x) * ratio,
+									   (texEdges1.x * vertEdges2.y - texEdges2.x * vertEdges1.y) * ratio,
+									   (texEdges1.x * vertEdges2.z - texEdges2.x * vertEdges1.z) * ratio);
 
 		XMVECTOR uDirec = XMLoadFloat3(&uDirection);
 		XMVECTOR vDirec = XMLoadFloat3(&vDirection);
@@ -374,27 +411,67 @@ void Model::CalculateTangents()
 			tangent = XMVector3Normalize(tangent);
 			XMStoreFloat4(&m_vertices[m_indices[i + j]].tangent, tangent);
 
+			if (prevTangent.x != 0 && prevTangent.y != 0 && prevTangent.z != 0)
+			{
+				m_vertices[m_indices[i + j]].tangent.x = (prevTangent.x + m_vertices[m_indices[i + j]].tangent.x)*0.5f;
+				m_vertices[m_indices[i + j]].tangent.y = (prevTangent.y + m_vertices[m_indices[i + j]].tangent.y)*0.5f;
+				m_vertices[m_indices[i + j]].tangent.z = (prevTangent.z + m_vertices[m_indices[i + j]].tangent.z)*0.5f;
+			}
 
 			XMVECTOR cross = XMVector3Cross(XMLoadFloat3(&m_vertices[m_indices[i + j]].normal), uDirec);
 			XMVECTOR handedness = vDirec;
 			XMStoreFloat3(&dotResult, XMVector3Dot(cross, handedness));
 			m_vertices[m_indices[i + j]].tangent.w = (dotResult.x < 0.0f) ? -1.0f : 1.0f;
-
-
-			//if (m_indices[i + j] != i + j)
-			//{
-			//	break;
-			//}
-
-			//if (prevTangent.x != 0 && prevTangent.y != 0 && prevTangent.z != 0)
-			//{
-			//	prevTangent.x = (prevTangent.x + m_vertices[m_indices[i + j]].tangent.x)*0.5f;
-			//	prevTangent.y = (prevTangent.y + m_vertices[m_indices[i + j]].tangent.y)*0.5f;
-			//	prevTangent.z = (prevTangent.z + m_vertices[m_indices[i + j]].tangent.z)*0.5f;
-			//}
 		}
 	}
 }
+
+void Model::CalculateNormals()
+{
+	//Loop through vertices and zero out normals
+	for (unsigned int i = 0; i < m_vertices.size(); ++i)
+	{
+		m_vertices[i].normal.x = 0;
+		m_vertices[i].normal.y = 0;
+		m_vertices[i].normal.z = 0;
+	}
+
+	//Loop through indices and construct normals averaged
+	for (unsigned int i = 0; i < m_indices.size(); i += 3)
+	{
+		XMFLOAT3 tempVert1 = m_vertices[m_indices[i]].pos;
+		XMFLOAT3 tempVert2 = m_vertices[m_indices[i + 1]].pos;
+		XMFLOAT3 tempVert3 = m_vertices[m_indices[i + 2]].pos;
+		XMVECTOR vertEdge1 = XMVectorSubtract(XMLoadFloat3(&tempVert2), XMLoadFloat3(&tempVert1));
+		XMVECTOR vertEdge2 = XMVectorSubtract(XMLoadFloat3(&tempVert3), XMLoadFloat3(&tempVert1));
+		XMFLOAT3 vertEdges1;
+		XMFLOAT3 vertEdges2;
+		XMStoreFloat3(&vertEdges1, vertEdge1);
+		XMStoreFloat3(&vertEdges2, vertEdge2);
+
+		XMVECTOR faceNormal = XMVector3Cross(vertEdge1, vertEdge2);
+		XMFLOAT3 faceNormal3;
+		XMStoreFloat3(&faceNormal3, faceNormal);
+
+		m_vertices[m_indices[i]].normal.x += faceNormal3.x;
+		m_vertices[m_indices[i]].normal.y += faceNormal3.y;
+		m_vertices[m_indices[i]].normal.z += faceNormal3.z;
+
+		m_vertices[m_indices[i+1]].normal.x += faceNormal3.x;
+		m_vertices[m_indices[i+1]].normal.y += faceNormal3.y;
+		m_vertices[m_indices[i+1]].normal.z += faceNormal3.z;
+
+		m_vertices[m_indices[i+2]].normal.x += faceNormal3.x;
+		m_vertices[m_indices[i+2]].normal.y += faceNormal3.y;
+		m_vertices[m_indices[i+2]].normal.z += faceNormal3.z;
+	}
+
+	for (unsigned int i = 0; i < m_vertices.size(); ++i)
+	{
+		XMStoreFloat3(&m_vertices[i].normal, XMVector3Normalize(XMLoadFloat3(&m_vertices[i].normal)));
+	}
+}
+
 
 void Model::Release()
 {

@@ -20,9 +20,10 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	CreateDeviceDependentResources();
 	CreateWindowSizeDependentResources();
 	InitializeLights();
+	InitializeScreenEffect();
 
-	static XMVECTORF32 eye = { 0.0f, 3.0f, -5.0f, 1.0f };
-	static XMVECTORF32 at = { 0.0f, 0.0f, 0.0f, 1.0f };
+	static XMVECTORF32 eye = { 0.0f, 5.0f, -8.0f, 1.0f };
+	static XMVECTORF32 at = { 0.0f, 2.0f, 0.0f, 1.0f };
 	static XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
 	XMStoreFloat4x4(&camera, XMMatrixInverse(0, XMMatrixLookAtLH(eye, at, up)));
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
@@ -107,6 +108,61 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 
 	}
 
+	//Render-To-Texture
+	{
+		D3D11_TEXTURE2D_DESC tDesc;
+		tDesc.ArraySize = 1;
+		tDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		tDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		tDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		tDesc.Height = lround(m_deviceResources->GetLogicalSize().Height);
+		tDesc.MipLevels = 1;
+		tDesc.SampleDesc.Count = 1;
+		tDesc.SampleDesc.Quality = 0;
+		tDesc.Usage = D3D11_USAGE_DEFAULT;
+		tDesc.Width = lround(m_deviceResources->GetLogicalSize().Width);
+		tDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+
+		HRESULT result = m_deviceResources->GetD3DDevice()->CreateTexture2D(&tDesc, nullptr, m_RTTTexture.GetAddressOf());
+		result = m_deviceResources->GetD3DDevice()->CreateShaderResourceView(m_RTTTexture.Get(), nullptr, RTTSRVScene.GetAddressOf());
+		result = m_deviceResources->GetD3DDevice()->CreateRenderTargetView1(m_RTTTexture.Get(), nullptr, m_RTTRTVScene.GetAddressOf());
+
+		CD3D11_TEXTURE2D_DESC depthStencilDesc(
+			DXGI_FORMAT_D24_UNORM_S8_UINT,
+			lround(m_deviceResources->GetLogicalSize().Width),
+			lround(m_deviceResources->GetLogicalSize().Height),
+			1, // This depth stencil view has only one texture.
+			1, // Use a single mipmap level.
+			D3D11_BIND_DEPTH_STENCIL
+		);
+
+		ID3D11Texture2D* depthStencil;
+		result = m_deviceResources->GetD3DDevice()->CreateTexture2D(
+			&depthStencilDesc,
+			nullptr,
+			&depthStencil
+		);
+
+
+		CD3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc(D3D11_DSV_DIMENSION_TEXTURE2D);
+		result = m_deviceResources->GetD3DDevice()->CreateDepthStencilView(
+			depthStencil,
+			&depthStencilViewDesc,
+			&m_RTTDSVScene
+		);
+
+		depthStencil->Release();
+		depthStencil = nullptr;
+
+		m_RTTSceneViewport = CD3D11_VIEWPORT(
+			0.0f,
+			0.0f,
+			m_deviceResources->GetLogicalSize().Width,
+			m_deviceResources->GetLogicalSize().Height
+		);
+
+	}
+
 	// Note that the OrientationTransform3D matrix is post-multiplied here
 	// in order to correctly orient the scene to match the display orientation.
 	// This post-multiplication step is required for any draw calls that are
@@ -118,7 +174,7 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 		fovAngleY,
 		aspectRatio,
 		NEAR_PLANE,
-		100.0f
+		500.0f
 	);
 
 	XMFLOAT4X4 orientation = m_deviceResources->GetOrientationTransform3D();
@@ -133,6 +189,8 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources()
 	m_RTTCBufferData.projection = m_constantBufferData.projection;
 	m_constantBufferDataVP.projection[0] = m_constantBufferData.projection;
 	m_constantBufferDataVP.projection[1] = m_constantBufferData.projection;
+	//m_snowBufferWVPData.projection[0] = m_constantBufferDataVP.projection[0];
+	//m_snowBufferWVPData.projection[1] = m_constantBufferDataVP.projection[1];
 }
 
 using namespace Windows::UI::Core;
@@ -160,7 +218,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 
 	XMMATRIX newcamera = XMLoadFloat4x4(&camera);
 
-	//KeyboardInput
+	//Camera Input
 	if (buttons['W'])
 	{
 		newcamera.r[3] = newcamera.r[3] + newcamera.r[2] * timer.GetElapsedSeconds() * 5.0;
@@ -192,12 +250,93 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	}
 
 
+	//ScreenEffect Colors
+	//TODO: make the buttons add together rather than just toggle which is on
+	//Red
+	if (buttons['T'])
+	{
+		m_screenEffectData.lossColor.x = 0.0f;
+		m_screenEffectData.lossColor.y = 0.1f;
+		m_screenEffectData.lossColor.z = 0.1f;
+		m_screenEffectData.lossColor.w = 0.0f;
+	}
+	//Green
+	if (buttons['G'])
+	{
+		m_screenEffectData.lossColor.x = 0.1f;
+		m_screenEffectData.lossColor.y = 0.0f;
+		m_screenEffectData.lossColor.z = 0.1f;
+		m_screenEffectData.lossColor.w = 0.0f;
+	}
+	//Blue
+	if (buttons['B'])
+	{
+		m_screenEffectData.lossColor.x = 0.1f;
+		m_screenEffectData.lossColor.y = 0.1f;
+		m_screenEffectData.lossColor.z = 0.0f;
+		m_screenEffectData.lossColor.w = 0.0f;
+	}
+	//Normal
+	if (buttons['N'])
+	{
+		m_screenEffectData.lossColor.x = 0.0f;
+		m_screenEffectData.lossColor.y = 0.0f;
+		m_screenEffectData.lossColor.z = 0.0f;
+		m_screenEffectData.lossColor.w = 0.0f;
+	}
+	//Yellow
+	if (buttons['Y'])
+	{
+		m_screenEffectData.lossColor.x = 0.0f;
+		m_screenEffectData.lossColor.y = 0.0f;
+		m_screenEffectData.lossColor.z = 0.1f;
+		m_screenEffectData.lossColor.w = 0.0f;
+	}
+	//Magenta
+	if (buttons['H'])
+	{
+		m_screenEffectData.lossColor.x = 0.0f;
+		m_screenEffectData.lossColor.y = 0.1f;
+		m_screenEffectData.lossColor.z = 0.0f;
+		m_screenEffectData.lossColor.w = 0.0f;
+	}
+	//Cyan
+	if (buttons['C'])
+	{
+		m_screenEffectData.lossColor.x = 0.1f;
+		m_screenEffectData.lossColor.y = 0.0f;
+		m_screenEffectData.lossColor.z = 0.0f;
+		m_screenEffectData.lossColor.w = 0.0f;
+	}
+	//White
+	if (buttons['U'])
+	{
+		m_screenEffectData.lossColor.x = -0.1f;
+		m_screenEffectData.lossColor.y = -0.1f;
+		m_screenEffectData.lossColor.z = -0.1f;
+		m_screenEffectData.lossColor.w = 0.0f;
+	}
+	//Black
+	if (buttons['I'])
+	{
+		m_screenEffectData.lossColor.x = 0.1f;
+		m_screenEffectData.lossColor.y = 0.1f;
+		m_screenEffectData.lossColor.z = 0.1f;
+		m_screenEffectData.lossColor.w = 0.0f;
+	}
 
+	if (false)
+	{
+		Size size;
+		size.Height = m_deviceResources->GetLogicalSize().Height;
+		m_deviceResources->SetLogicalSize(size);
+	}
 
 
 	XMMATRIX pointLight = XMMatrixIdentity();
 	XMVECTOR lightpos = XMLoadFloat4(&m_lightBufferData.lights[1].position);
 
+	//PointLight Input
 	if (buttons[VK_UP])
 	{
 		pointLight.r[3] = pointLight.r[3] + pointLight.r[2] * timer.GetElapsedSeconds() * 5.0;
@@ -285,51 +424,97 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	cubeWorld = XMMatrixIdentity();
 	cubeWorld = XMMatrixRotationY(radians);
 	cubeWorld = XMMatrixMultiply(XMMatrixTranslation(0.0f, 0.5f, 0.0f), cubeWorld);
-	cubeWorld = XMMatrixMultiply(XMMatrixScaling(0.51f, 0.51f, 0.51f), cubeWorld);
+	cubeWorld = XMMatrixMultiply(XMMatrixScaling(0.125f, 0.125f, 0.125f), cubeWorld);
 
 
 	//GunMatrix
 	XMMATRIX model = XMMatrixIdentity();
 	model = XMMatrixMultiply(XMMatrixTranslation(0.0f, 1.0f, 0.0f), model);
 	model = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(135)), model);
-	model = XMMatrixMultiply(XMMatrixScaling(0.2f, 0.2f, 0.2f), model);
+	//model = XMMatrixMultiply(XMMatrixScaling(0.2f, 0.2f, 0.2f), model);
 	model = XMMatrixMultiply(model, cubeWorld);
 	XMStoreFloat4x4(&GunTurret.GetWorldMatrix(), XMMatrixTranspose(model));
 
+	//StatueMatrix
+	model = XMMatrixIdentity();
+	//model = XMMatrixMultiply(XMMatrixTranslation(5.0f, 1.18f, 0.0f), model);
+	//model = XMMatrixMultiply(XMMatrixScaling(0.005f, 0.005f, 0.005f), model);
+	XMStoreFloat4x4(&Statue.GetWorldMatrix(), XMMatrixTranspose(model));
 
 	//cubeWorld = XMMatrixTranspose(cubeWorld);
 
-	//PyramidMatrix
+	//FountainMatrix
 	model = XMMatrixIdentity();
-	model = XMMatrixMultiply(XMMatrixTranslation(5.5f, 1.5f, 5.5f), model);
+	model = XMMatrixMultiply(XMMatrixTranslation(0.0f, 0.03f, 0.0f), model);
 	model = XMMatrixMultiply(XMMatrixRotationY(-radians), model);
-	model = XMMatrixMultiply(model, XMMatrixRotationY(radians));
-	XMStoreFloat4x4(&pyramid.GetWorldMatrix(), XMMatrixTranspose(model));
+	model = XMMatrixMultiply(XMMatrixScaling(0.5f, 0.5f, 0.5f), model);
+	XMMATRIX parent = model;
+	//model = XMMatrixMultiply(model, XMMatrixRotationY(radians));
+	XMStoreFloat4x4(&fountain.GetWorldMatrix(), XMMatrixTranspose(model));
 
-
-	//GoombaMatrix
+	//KnightMatrix
 	model = XMMatrixIdentity();
-	model = XMMatrixMultiply(XMMatrixTranslation(0.0f, 0.25f, 0.0f), model);
-	model = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(-135)), model);
-	model = XMMatrixMultiply(XMMatrixRotationY(radians), model);
-	//model = XMMatrixMultiply(XMMatrixScaling(radians+1.0f, radians + 1.0f, radians + 1.0f), model);
+	model = XMMatrixMultiply(XMMatrixTranslation(0.35f, 4.0f+(0.125f*cos(radians*4.0f)), 0.0f), model);
+	//model = XMMatrixMultiply(model,XMMatrixTranslation(0.0f, 0.0f, 10.0f));
+	//model = XMMatrixMultiply(XMMatrixTranslation(5.0f, 1.18f, 0.0f), model);
+	model = XMMatrixMultiply(XMMatrixRotationX(XMConvertToRadians(-90)), model);
+	//model = XMMatrixMultiply(XMMatrixRotationZ(radians), model);
+	model = XMMatrixMultiply(XMMatrixRotationZ(XMConvertToRadians(90)), model);
+	//model = XMMatrixMultiply(XMMatrixRotationZ(XMConvertToRadians(90)), model);
+	model = XMMatrixMultiply(XMMatrixScaling(0.005f, 0.005f, 0.005f), model);
+	//model = XMMatrixMultiply(model, parent);
 
-	model = XMMatrixMultiply(model, XMMatrixTranspose(XMLoadFloat4x4(&pyramid.GetWorldMatrix())));
-	XMStoreFloat4x4(&Goomba.GetWorldMatrix(), XMMatrixTranspose(model));
+	XMStoreFloat4x4(&Knight.GetWorldMatrix(), XMMatrixTranspose(model));
+
+	//GrappleGirlMatrix
+	model = XMMatrixIdentity();
+	model = XMMatrixMultiply(XMMatrixTranslation(-5.0f, 0.0f, -0.1f), model);
+	model = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(90)), model);
+	//model = XMMatrixMultiply(XMMatrixRotationY(radians), model);
+	model = XMMatrixMultiply(XMMatrixScaling(0.5f, 0.5f, 0.5f), model);
+
+	//model = XMMatrixMultiply(model, XMMatrixTranspose(XMLoadFloat4x4(&fountain.GetWorldMatrix())));
+	XMStoreFloat4x4(&GrappleGirl.GetWorldMatrix(), XMMatrixTranspose(model));
+
 
 
 	//SphereMatrix
-	for (unsigned int i = 0; i < 10; ++i)
+	model = XMMatrixIdentity();
+	model = XMMatrixMultiply(XMMatrixTranslation(0.0f, 6.0f, 0.0f), model);
+	//model = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(90)), model);
+	//model = XMMatrixMultiply(XMMatrixRotationY(radians), model);
+	model = XMMatrixMultiply(XMMatrixScaling(0.2f, 0.2f, 0.2f), model);
+
+	//model = XMMatrixMultiply(model, XMMatrixTranspose(XMLoadFloat4x4(&fountain.GetWorldMatrix())));
+	XMStoreFloat4x4(&Sphere.GetWorldMatrix(), XMMatrixTranspose(model));
+
+
+
+	//WolfMatrix
+	for (unsigned int i = 0; i < 12; ++i)
 	{
 		model = XMMatrixIdentity();
-		model = XMMatrixMultiply(XMMatrixRotationY(radians*(10-i)), model);
-		model = XMMatrixMultiply(XMMatrixTranslation(0.0f + (i * 2), 5.0f, 0.0f +(i * 2)), model);
-		model = XMMatrixMultiply(XMMatrixRotationY(radians*(i + 1)), model);
-		model = XMMatrixMultiply(XMMatrixScaling(0.4f+(i*0.1), 0.4f + (i*0.1), 0.4f + (i*0.1)), model);
-		XMStoreFloat4x4(&Sphere.GetWorldMatrix(), XMMatrixTranspose(model));
+		XMVECTOR position;
+		position.m128_f32[0] = cos(360/13 * (i + 1)) * 5;
+		position.m128_f32[1] = 0.0f;
+		position.m128_f32[2] = sin(360/13 * (i + 1)) * 5;
+		position.m128_f32[3] = 1;
+
+		XMVECTOR zAxis =XMVectorSubtract(XMLoadFloat4(&XMFLOAT4(0, 0.0f, 0,0)),position);
+		zAxis = XMVector3Normalize(zAxis);
+		zAxis.m128_f32[3] = 0.0f;
+		XMVECTOR xAxis = XMVector3Cross(XMLoadFloat4(&XMFLOAT4(0, 1, 0,0)), zAxis);
+		xAxis = XMVector3Normalize(xAxis);
+		XMVECTOR yAxis = XMVector3Cross(zAxis,xAxis);
+		yAxis = XMVector3Normalize(yAxis);
+
+		model = XMMATRIX(xAxis, yAxis, zAxis,position);
+
+		//model = XMMatrixMultiply(XMMatrixScaling(0.4f+(i*0.1), 0.4f + (i*0.1), 0.4f + (i*0.1)), model);
+		XMStoreFloat4x4(&Wolf.GetWorldMatrix(), XMMatrixTranspose(model));
 
 
-		m_constantInstanceData.model[i] = Sphere.GetWorldMatrix();
+		m_constantInstanceData.model[i] = Wolf.GetWorldMatrix();
 
 	}
 
@@ -343,6 +528,21 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	XMStoreFloat4(&m_lightBufferData.lights[2].position, headLamp.r[3]);
 	XMStoreFloat4(&m_lightBufferData.lights[2].normal, headLamp.r[2]);
 	m_lightBufferData.lights[2].position.w = 2;
+
+	for (unsigned int i = 3; i < 7; ++i)
+	{
+		XMVECTOR pos = XMLoadFloat4(&m_lightBufferData.lights[i].position);
+		XMVECTOR norm = XMLoadFloat4(&m_lightBufferData.lights[i].normal);
+		headLamp = XMMatrixIdentity();
+		headLamp = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(2.5)), headLamp);
+
+		pos = XMVector4Transform(pos, headLamp);
+		norm = XMVector4Transform(norm, headLamp);
+
+		XMStoreFloat4(&m_lightBufferData.lights[i].position, pos);
+		XMStoreFloat4(&m_lightBufferData.lights[i].normal, norm);
+		m_lightBufferData.lights[i].position.w = 2;
+	}
 
 
 
@@ -364,15 +564,16 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	XMVECTOR lightNorm = XMLoadFloat4(&m_lightBufferData.lights[0].normal);
 	if (buttons['L'])
 	{
-		directionalLight = XMMatrixRotationAxis(XMVECTOR(XMLoadFloat3(&XMFLOAT3(-1.0f,0.0f,1.0f))),XMConvertToRadians(0.5));
+		directionalLight = XMMatrixRotationAxis(XMVECTOR(XMLoadFloat3(&XMFLOAT3(0.0f,1.0f,0.0f))),XMConvertToRadians(0.5));
 	}
 	if (buttons['K'])
 	{
-		directionalLight = XMMatrixRotationAxis(XMVECTOR(XMLoadFloat3(&XMFLOAT3(-1.0f, 0.0f, 1.0f))), XMConvertToRadians(-0.5));
+		directionalLight = XMMatrixRotationAxis(XMVECTOR(XMLoadFloat3(&XMFLOAT3(0.0f, 1.0f, 0.0f))), XMConvertToRadians(-0.5));
 	}
 	//directionalLight = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(1)), directionalLight);
-	directionalLight = XMMatrixTranspose(directionalLight);
+	//directionalLight = XMMatrixTranspose(directionalLight);
 	lightNorm = XMVector4Transform(lightNorm, directionalLight);
+	lightNorm = XMVector4Normalize(lightNorm);
 	XMStoreFloat4(&m_lightBufferData.lights[0].normal, lightNorm);
 
 	//TODO: both viewports
@@ -381,17 +582,28 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 	m_specBufferCamData.cameraPosition.z = camera._43;
 	m_specBufferCamData.cameraPosition.w = camera._44;
 
+
 	/*Be sure to inverse the camera & Transpose because they don't use pragma pack row major in shaders*/
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(0, newcamera)));
 
 	m_constantBufferDataVP.view[0] = m_constantBufferData.view;
 	m_constantBufferDataVP.view[1] = m_constantBufferData.view;
 
-	//Maybenotdothis every frame? just a size right? does it ever get updated outside of this?
-	float dimension = 30;
-	m_lightBufferDataVP.UpdateView(m_lightBufferData.lights[0], dimension, dimension);
-	m_lightBufferDataVP.UpdateProjection(m_lightBufferData.lights[0], dimension, dimension);
+	//m_snowBufferWVPData.view[0] = m_constantBufferDataVP.view[0];
+	//m_snowBufferWVPData.view[1] = m_constantBufferDataVP.view[1];
 
+	float dimension = 30;
+
+	if (buttons['Z'])
+	{
+		m_lightBufferDataVP.UpdateView(m_lightBufferData.lights[3], dimension, dimension, 2048);
+		m_lightBufferDataVP.UpdateProjection(m_lightBufferData.lights[3], dimension, dimension);
+	}
+	else
+	{
+		m_lightBufferDataVP.UpdateView(m_lightBufferData.lights[0], dimension, dimension,2048);
+		m_lightBufferDataVP.UpdateProjection(m_lightBufferData.lights[0], dimension, dimension);
+	}
 	mouse_move = false;/*Reset*/
 }
 
@@ -532,6 +744,7 @@ void Sample3DSceneRenderer::Render()
 		);
 
 		context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
+		context->PSSetSamplers(1, 1, samplerPCF.GetAddressOf());
 
 
 		// Draw the objects.
@@ -670,7 +883,7 @@ void Sample3DSceneRenderer::Render()
 
 		//DRAWPYRAMID
 		{
-			m_constantBufferDataM.model = pyramid.GetWorldMatrix();
+			m_constantBufferDataM.model = fountain.GetWorldMatrix();
 
 			// Prepare the constant buffer to send it to the graphics device.
 			context->UpdateSubresource1(
@@ -696,13 +909,13 @@ void Sample3DSceneRenderer::Render()
 			context->IASetVertexBuffers(
 				0,
 				1,
-				pyramid.GetVertexBuffer().GetAddressOf(),
+				fountain.GetVertexBuffer().GetAddressOf(),
 				&stride,
 				&offset
 			);
 
 			context->IASetIndexBuffer(
-				pyramid.GetIndexBuffer().Get(),
+				fountain.GetIndexBuffer().Get(),
 				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
 				0
 			);
@@ -743,7 +956,7 @@ void Sample3DSceneRenderer::Render()
 
 			// Draw the objects.
 			context->DrawIndexed(
-				pyramid.GetIndices().size(),
+				fountain.GetIndices().size(),
 				0,
 				0
 			);
@@ -751,9 +964,9 @@ void Sample3DSceneRenderer::Render()
 		}
 
 
-		//Draw Goomba
+		//Draw GrappleGirl
 		{
-			m_constantBufferDataM.model = Goomba.GetWorldMatrix();
+			m_constantBufferDataM.model = GrappleGirl.GetWorldMatrix();
 
 			context->UpdateSubresource1(
 				m_constantBufferM.Get(),
@@ -770,26 +983,26 @@ void Sample3DSceneRenderer::Render()
 			context->IASetVertexBuffers(
 				0,
 				1,
-				Goomba.GetVertexBuffer().GetAddressOf(),
+				GrappleGirl.GetVertexBuffer().GetAddressOf(),
 				&stride,
 				&offset
 			);
 
 			context->IASetIndexBuffer(
-				Goomba.GetIndexBuffer().Get(),
+				GrappleGirl.GetIndexBuffer().Get(),
 				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
 				0
 			);
 			// Draw the objects.
 			context->DrawIndexed(
-				Goomba.GetIndices().size(),
+				GrappleGirl.GetIndices().size(),
 				0,
 				0
 			);
 		}
 
 
-		//Draw Spheres
+		//Draw Wolves
 		{
 			m_constantInstanceData.view = m_constantBufferData.view;
 			m_constantInstanceData.projection = m_constantBufferData.projection;
@@ -825,21 +1038,21 @@ void Sample3DSceneRenderer::Render()
 			context->IASetVertexBuffers(
 				0,
 				1,
-				Sphere.GetVertexBuffer().GetAddressOf(),
+				Wolf.GetVertexBuffer().GetAddressOf(),
 				&stride,
 				&offset
 			);
 
 			context->IASetIndexBuffer(
-				Sphere.GetIndexBuffer().Get(),
+				Wolf.GetIndexBuffer().Get(),
 				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
 				0
 			);
 
-			// Draw the objects.
+			//Draw the objects.
 			context->DrawIndexedInstanced(
-				Sphere.GetIndices().size(),
-				10,
+				Wolf.GetIndices().size(),
+				12,
 				0,
 				0,
 				0
@@ -849,13 +1062,77 @@ void Sample3DSceneRenderer::Render()
 
 		//Draw Gunturret
 		{
-			m_constantBufferDataM.model = GunTurret.GetWorldMatrix();
+			//m_constantBufferDataM.model = GunTurret.GetWorldMatrix();
+
+			//// Attach our vertex shader.
+			//context->VSSetShader(
+			//	m_vertexShaderM.Get(),
+			//	nullptr,
+			//	0
+			//);
+
+			//// Prepare the constant buffer to send it to the graphics device.
+			//context->UpdateSubresource1(
+			//	m_constantBufferM.Get(),
+			//	0,
+			//	NULL,
+			//	&m_constantBufferDataM,
+			//	0,
+			//	0,
+			//	0
+			//);
+
+			//// Send the constant buffer to the graphics device.
+			//context->VSSetConstantBuffers1(
+			//	0,
+			//	1,
+			//	m_constantBufferM.GetAddressOf(),
+			//	nullptr,
+			//	nullptr
+			//);
+
+			//stride = sizeof(RobustVertex);
+			//offset = 0;
+			//context->IASetVertexBuffers(
+			//	0,
+			//	1,
+			//	GunTurret.GetVertexBuffer().GetAddressOf(),
+			//	&stride,
+			//	&offset
+			//);
+
+			//context->IASetIndexBuffer(
+			//	GunTurret.GetIndexBuffer().Get(),
+			//	DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+			//	0
+			//);
+
+			//// Draw the objects.
+			//context->DrawIndexed(
+			//	GunTurret.GetIndices().size(),
+			//	0,
+			//	0
+			//);
+
+		}
+
+		//Draw Knight
+		{
+			m_constantBufferDataM.model = Knight.GetWorldMatrix();
 
 			// Attach our vertex shader.
 			context->VSSetShader(
 				m_vertexShaderM.Get(),
 				nullptr,
 				0
+			);
+
+			context->PSSetConstantBuffers1(
+				0,
+				1,
+				m_lightBuffer.GetAddressOf(),
+				nullptr,
+				nullptr
 			);
 
 			// Prepare the constant buffer to send it to the graphics device.
@@ -878,38 +1155,153 @@ void Sample3DSceneRenderer::Render()
 				nullptr
 			);
 
+			context->UpdateSubresource1(
+				m_camBuffer.Get(),
+				0,
+				NULL,
+				&m_specBufferCamData,
+				0,
+				0,
+				0
+			);
+
 			stride = sizeof(RobustVertex);
 			offset = 0;
 			context->IASetVertexBuffers(
 				0,
 				1,
-				GunTurret.GetVertexBuffer().GetAddressOf(),
+				Knight.GetVertexBuffer().GetAddressOf(),
 				&stride,
 				&offset
 			);
 
 			context->IASetIndexBuffer(
-				GunTurret.GetIndexBuffer().Get(),
+				Knight.GetIndexBuffer().Get(),
 				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
 				0
 			);
 
+			context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
+
+
 			// Draw the objects.
 			context->DrawIndexed(
-				GunTurret.GetIndices().size(),
+				Knight.GetIndices().size(),
 				0,
 				0
 			);
 
 		}
+
+
+		//DrawStatue
+		{
+			m_constantBufferDataM.model = Statue.GetWorldMatrix();
+
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+			context->UpdateSubresource1(
+				m_constantBufferVP.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataVP,
+				0,
+				0,
+				0
+			);
+
+			context->UpdateSubresource1(
+				m_lightBufferVP.Get(),
+				0,
+				NULL,
+				&m_lightBufferDataVP,
+				0,
+				0,
+				0
+			);
+
+			// Each vertex is one instance of the VertexPositionColor struct.
+			context->IASetVertexBuffers(
+				0,
+				1,
+				Statue.GetVertexBuffer().GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				Statue.GetIndexBuffer().Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+
+			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			context->IASetInputLayout(m_inputLayout.Get());
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderM.Get(),
+				nullptr,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferM.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Send the constant buffer to the graphics device.
+			context->GSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferVP.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			context->GSSetConstantBuffers1(
+				1,
+				1,
+				m_lightBufferVP.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+			// Attach our pixel shader.
+			context->GSSetShader(
+				m_geometryShaderVP.Get(),
+				nullptr,
+				0
+			);
+
+			// Attach our pixel shader.
+			context->PSSetShader(
+				m_pixelShaderShadow.Get(),
+				nullptr,
+				0
+			);
+
+			// Draw the objects.
+			context->DrawIndexed(
+				Statue.GetIndices().size(),
+				0,
+				0
+			);
+
+		}
+
 }
-
-
-
-
-
-
-
 
 
 
@@ -928,10 +1320,10 @@ void Sample3DSceneRenderer::Render()
 	m_screenViewport[1] = m_deviceResources->GetScreenViewport2();
 	context->RSSetViewports(2, m_screenViewport);
 
-	ID3D11RenderTargetView *const target[1] = { m_deviceResources->GetBackBufferRenderTargetView() };
-	context->OMSetRenderTargets(1, target, m_deviceResources->GetDepthStencilView());
-	context->ClearRenderTargetView(m_deviceResources->GetBackBufferRenderTargetView(), DirectX::Colors::White);
-	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	ID3D11RenderTargetView *const target[1] = { m_RTTRTVScene.Get() };
+	context->OMSetRenderTargets(1, target, m_RTTDSVScene.Get());
+	context->ClearRenderTargetView(m_RTTRTVScene.Get(), DirectX::Colors::White);
+	context->ClearDepthStencilView(m_RTTDSVScene.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
 	
 	//RESET GS
@@ -1040,7 +1432,7 @@ void Sample3DSceneRenderer::Render()
 
 		}
 
-		context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+		context->ClearDepthStencilView(m_RTTDSVScene.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
 		context->RSSetState(m_rasterizerStateCW.Get());
 		//DrawCube
@@ -1152,7 +1544,7 @@ void Sample3DSceneRenderer::Render()
 
 
 			context->PSSetShaderResources(0, 1, RTTSRV.GetAddressOf());
-			context->PSSetShaderResources(1, 1, floorNSRV.GetAddressOf());
+			context->PSSetShaderResources(1, 1, flatNormalMapSRV.GetAddressOf());
 			context->PSSetShaderResources(2, 1, shadowMap->m_ShadowSRV.GetAddressOf());
 
 			context->PSSetSamplers(0, 1, sampler.GetAddressOf());
@@ -1205,6 +1597,8 @@ void Sample3DSceneRenderer::Render()
 
 			context->PSSetShaderResources(0, 1, floorSRV.GetAddressOf());
 			context->PSSetShaderResources(1, 1, floorNSRV.GetAddressOf());
+			context->PSSetShaderResources(2, 1, floorSSRV.GetAddressOf());
+			context->PSSetShaderResources(3, 1, shadowMap->m_ShadowSRV.GetAddressOf());
 
 			stride = sizeof(RobustVertex);
 			offset = 0;
@@ -1225,6 +1619,13 @@ void Sample3DSceneRenderer::Render()
 			// Attach our vertex shader.
 			context->VSSetShader(
 				m_vertexShaderM.Get(),
+				nullptr,
+				0
+			);
+
+			// Attach our pixel shader.
+			context->PSSetShader(
+				m_pixelShaderNS.Get(),
 				nullptr,
 				0
 			);
@@ -1250,9 +1651,9 @@ void Sample3DSceneRenderer::Render()
 
 
 
-		//DRAWPYRAMID
+		//DrawFountain
 		{
-			m_constantBufferDataM.model = pyramid.GetWorldMatrix();
+			m_constantBufferDataM.model = fountain.GetWorldMatrix();
 
 			// Prepare the constant buffer to send it to the graphics device.
 			context->UpdateSubresource1(
@@ -1287,13 +1688,13 @@ void Sample3DSceneRenderer::Render()
 			context->IASetVertexBuffers(
 				0,
 				1,
-				pyramid.GetVertexBuffer().GetAddressOf(),
+				fountain.GetVertexBuffer().GetAddressOf(),
 				&stride,
 				&offset
 			);
 
 			context->IASetIndexBuffer(
-				pyramid.GetIndexBuffer().Get(),
+				fountain.GetIndexBuffer().Get(),
 				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
 				0
 			);
@@ -1357,14 +1758,15 @@ void Sample3DSceneRenderer::Render()
 			);
 
 
-			context->PSSetShaderResources(0, 1, pyramid.GetSRV().GetAddressOf());
-			context->PSSetShaderResources(1, 1, floorNSRV.GetAddressOf());
+			context->PSSetShaderResources(0, 1, fountain.GetSRV().GetAddressOf());
+			context->PSSetShaderResources(1, 1, fountain.GetNormalMap().GetAddressOf());
+			context->PSSetShaderResources(2, 1, shadowMap->m_ShadowSRV.GetAddressOf());
 
 			context->PSSetSamplers(0, 1, sampler.GetAddressOf());
 
 			// Draw the objects.
 			context->DrawIndexed(
-				pyramid.GetIndices().size(),
+				fountain.GetIndices().size(),
 				0,
 				0
 			);
@@ -1372,9 +1774,9 @@ void Sample3DSceneRenderer::Render()
 		}
 
 
-		//Draw Goomba
+		//Draw GrappleGirl
 		{
-			m_constantBufferDataM.model = Goomba.GetWorldMatrix();
+			m_constantBufferDataM.model = GrappleGirl.GetWorldMatrix();
 
 			context->UpdateSubresource1(
 				m_constantBufferM.Get(),
@@ -1386,35 +1788,46 @@ void Sample3DSceneRenderer::Render()
 				0
 			);
 
-			context->PSSetShaderResources(0, 1, Goomba.GetSRV().GetAddressOf());
-			context->PSSetShaderResources(1, 1, Goomba.GetNormalMap().GetAddressOf());
+			// Attach our pixel shader.
+			context->PSSetShader(
+				m_pixelShaderNS.Get(),
+				nullptr,
+				0
+			);
+
+			context->PSSetShaderResources(0, 1, GrappleGirl.GetSRV().GetAddressOf());
+			context->PSSetShaderResources(1, 1, GrappleGirl.GetNormalMap().GetAddressOf());
+			context->PSSetShaderResources(2, 1, GrappleGirl.GetSpecularMap().GetAddressOf());
+			context->PSSetShaderResources(3, 1, shadowMap->m_ShadowSRV.GetAddressOf());
+
+			context->PSSetSamplers(0, 1, sampler.GetAddressOf());
 
 			stride = sizeof(RobustVertex);
 			offset = 0;
 			context->IASetVertexBuffers(
 				0,
 				1,
-				Goomba.GetVertexBuffer().GetAddressOf(),
+				GrappleGirl.GetVertexBuffer().GetAddressOf(),
 				&stride,
 				&offset
 			);
 
 			context->IASetIndexBuffer(
-				Goomba.GetIndexBuffer().Get(),
+				GrappleGirl.GetIndexBuffer().Get(),
 				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
 				0
 			);
-			context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
+
 			// Draw the objects.
 			context->DrawIndexed(
-				Goomba.GetIndices().size(),
+				GrappleGirl.GetIndices().size(),
 				0,
 				0
 			);
 		}
 
 
-		//Draw Spheres
+		//Draw Wolves
 		{
 			m_constantInstanceData.view = m_constantBufferData.view;
 			m_constantInstanceData.projection = m_constantBufferData.projection;
@@ -1445,8 +1858,195 @@ void Sample3DSceneRenderer::Render()
 				nullptr
 			);
 
+			context->PSSetShaderResources(0, 1, Wolf.GetSRV().GetAddressOf());
+			context->PSSetShaderResources(1, 1, Wolf.GetNormalMap().GetAddressOf());
+			context->PSSetShaderResources(2, 1, shadowMap->m_ShadowSRV.GetAddressOf());
+
+			// Attach our pixel shader.
+			context->PSSetShader(
+				m_pixelShaderN.Get(),
+				nullptr,
+				0
+			);
+
+			stride = sizeof(RobustVertex);
+			offset = 0;
+			context->IASetVertexBuffers(
+				0,
+				1,
+				Wolf.GetVertexBuffer().GetAddressOf(),
+				&stride,
+				&offset
+			);
+
+			context->IASetIndexBuffer(
+				Wolf.GetIndexBuffer().Get(),
+				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+				0
+			);
+
+			context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
+
+
+			// Draw the objects.
+			context->DrawIndexedInstanced(
+				Wolf.GetIndices().size(),
+				12,
+				0,
+				0,
+				0
+			);
+
+		}
+
+		//Draw Gunturret
+		{
+		//m_constantBufferDataM.model = GunTurret.GetWorldMatrix();
+
+		//// Attach our pixel shader.
+		//context->PSSetShader(
+		//	m_pixelShaderNS.Get(),
+		//	nullptr,
+		//	0
+		//);
+
+		//// Attach our vertex shader.
+		//context->VSSetShader(
+		//	m_vertexShaderM.Get(),
+		//	nullptr,
+		//	0
+		//);
+
+		//context->PSSetConstantBuffers1(
+		//	0,
+		//	1,
+		//	m_lightBuffer.GetAddressOf(),
+		//	nullptr,
+		//	nullptr
+		//);
+
+		//// Prepare the constant buffer to send it to the graphics device.
+		//context->UpdateSubresource1(
+		//	m_constantBufferM.Get(),
+		//	0,
+		//	NULL,
+		//	&m_constantBufferDataM,
+		//	0,
+		//	0,
+		//	0
+		//);
+
+		//// Send the constant buffer to the graphics device.
+		//context->VSSetConstantBuffers1(
+		//	0,
+		//	1,
+		//	m_constantBufferM.GetAddressOf(),
+		//	nullptr,
+		//	nullptr
+		//);
+
+		//context->UpdateSubresource1(
+		//	m_camBuffer.Get(),
+		//	0,
+		//	NULL,
+		//	&m_specBufferCamData,
+		//	0,
+		//	0,
+		//	0
+		//);
+
+		//context->PSSetShaderResources(0, 1, GunTurret.GetSRV().GetAddressOf());
+		//context->PSSetShaderResources(1, 1, GunTurret.GetNormalMap().GetAddressOf());
+		//context->PSSetShaderResources(2, 1, GunTurret.GetSpecularMap().GetAddressOf());
+		//context->PSSetShaderResources(3, 1, shadowMap->m_ShadowSRV.GetAddressOf());
+
+		//stride = sizeof(RobustVertex);
+		//offset = 0;
+		//context->IASetVertexBuffers(
+		//	0,
+		//	1,
+		//	GunTurret.GetVertexBuffer().GetAddressOf(),
+		//	&stride,
+		//	&offset
+		//);
+
+		//context->IASetIndexBuffer(
+		//	GunTurret.GetIndexBuffer().Get(),
+		//	DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+		//	0
+		//);
+
+		//context->PSSetSamplers(0, 1, samplerFloor.GetAddressOf());
+
+
+		//// Draw the objects.
+		//context->DrawIndexed(
+		//	GunTurret.GetIndices().size(),
+		//	0,
+		//	0
+		//);
+
+		}
+
+		//Draw Sphere
+		{
+			m_constantBufferDataM.model = Sphere.GetWorldMatrix();
+
+			// Attach our pixel shader.
+			context->PSSetShader(
+				m_pixelShaderN.Get(),
+				nullptr,
+				0
+			);
+
+			// Attach our vertex shader.
+			context->VSSetShader(
+				m_vertexShaderM.Get(),
+				nullptr,
+				0
+			);
+
+			context->PSSetConstantBuffers1(
+				0,
+				1,
+				m_lightBuffer.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+				0,
+				0
+			);
+
+			// Send the constant buffer to the graphics device.
+			context->VSSetConstantBuffers1(
+				0,
+				1,
+				m_constantBufferM.GetAddressOf(),
+				nullptr,
+				nullptr
+			);
+
+			context->UpdateSubresource1(
+				m_camBuffer.Get(),
+				0,
+				NULL,
+				&m_specBufferCamData,
+				0,
+				0,
+				0
+			);
+
 			context->PSSetShaderResources(0, 1, Sphere.GetSRV().GetAddressOf());
 			context->PSSetShaderResources(1, 1, Sphere.GetNormalMap().GetAddressOf());
+			context->PSSetShaderResources(2, 1, shadowMap->m_ShadowSRV.GetAddressOf());
 
 			stride = sizeof(RobustVertex);
 			offset = 0;
@@ -1468,19 +2068,18 @@ void Sample3DSceneRenderer::Render()
 
 
 			// Draw the objects.
-			context->DrawIndexedInstanced(
+			context->DrawIndexed(
 				Sphere.GetIndices().size(),
-				10,
-				0,
 				0,
 				0
 			);
 
 		}
 
-		//Draw Gunturret
+
+		//Draw Knight
 		{
-			m_constantBufferDataM.model = GunTurret.GetWorldMatrix();
+			m_constantBufferDataM.model = Knight.GetWorldMatrix();
 
 			// Attach our pixel shader.
 			context->PSSetShader(
@@ -1534,9 +2133,9 @@ void Sample3DSceneRenderer::Render()
 				0
 			);
 
-			context->PSSetShaderResources(0, 1, GunTurret.GetSRV().GetAddressOf());
-			context->PSSetShaderResources(1, 1, GunTurret.GetNormalMap().GetAddressOf());
-			context->PSSetShaderResources(2, 1, GunTurret.GetSpecularMap().GetAddressOf());
+			context->PSSetShaderResources(0, 1, Knight.GetSRV().GetAddressOf());
+			context->PSSetShaderResources(1, 1, Knight.GetNormalMap().GetAddressOf());
+			context->PSSetShaderResources(2, 1, Knight.GetSpecularMap().GetAddressOf());
 			context->PSSetShaderResources(3, 1, shadowMap->m_ShadowSRV.GetAddressOf());
 
 			stride = sizeof(RobustVertex);
@@ -1544,13 +2143,13 @@ void Sample3DSceneRenderer::Render()
 			context->IASetVertexBuffers(
 				0,
 				1,
-				GunTurret.GetVertexBuffer().GetAddressOf(),
+				Knight.GetVertexBuffer().GetAddressOf(),
 				&stride,
 				&offset
 			);
 
 			context->IASetIndexBuffer(
-				GunTurret.GetIndexBuffer().Get(),
+				Knight.GetIndexBuffer().Get(),
 				DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
 				0
 			);
@@ -1560,15 +2159,309 @@ void Sample3DSceneRenderer::Render()
 
 			// Draw the objects.
 			context->DrawIndexed(
-				GunTurret.GetIndices().size(),
+				Knight.GetIndices().size(),
 				0,
 				0
 			);
 
 		}
 
+		//DrawStatue
+		{
+			m_constantBufferDataM.model = Statue.GetWorldMatrix();
+
+			// Prepare the constant buffer to send it to the graphics device.
+			context->UpdateSubresource1(
+				m_constantBufferM.Get(),
+				0,
+				NULL,
+				&m_constantBufferDataM,
+				0,
+0,
+0
+);
+context->UpdateSubresource1(
+	m_constantBufferVP.Get(),
+	0,
+	NULL,
+	&m_constantBufferDataVP,
+	0,
+	0,
+	0
+);
+
+context->UpdateSubresource1(
+	m_lightBufferVP.Get(),
+	0,
+	NULL,
+	&m_lightBufferDataVP,
+	0,
+	0,
+	0
+);
+
+// Each vertex is one instance of the VertexPositionColor struct.
+context->IASetVertexBuffers(
+	0,
+	1,
+	Statue.GetVertexBuffer().GetAddressOf(),
+	&stride,
+	&offset
+);
+
+context->IASetIndexBuffer(
+	Statue.GetIndexBuffer().Get(),
+	DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+	0
+);
+
+context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+context->IASetInputLayout(m_inputLayout.Get());
+
+// Attach our vertex shader.
+context->VSSetShader(
+	m_vertexShaderM.Get(),
+	nullptr,
+	0
+);
+
+// Send the constant buffer to the graphics device.
+context->VSSetConstantBuffers1(
+	0,
+	1,
+	m_constantBufferM.GetAddressOf(),
+	nullptr,
+	nullptr
+);
+// Send the constant buffer to the graphics device.
+context->GSSetConstantBuffers1(
+	0,
+	1,
+	m_constantBufferVP.GetAddressOf(),
+	nullptr,
+	nullptr
+);
+
+context->GSSetConstantBuffers1(
+	1,
+	1,
+	m_lightBufferVP.GetAddressOf(),
+	nullptr,
+	nullptr
+);
+// Attach our pixel shader.
+context->GSSetShader(
+	m_geometryShaderVP.Get(),
+	nullptr,
+	0
+);
+
+// Attach our pixel shader.
+context->PSSetShader(
+	m_pixelShaderN.Get(),
+	nullptr,
+	0
+);
+
+// Draw the objects.
+context->DrawIndexed(
+	Statue.GetIndices().size(),
+	0,
+	0
+);
+
+		}
+
 	}
 
+
+	////Snow Particles
+	//context->CSSetShader(
+	//	m_computeShaderSnow.Get(),
+	//	nullptr,
+	//	0
+	//);
+
+	//context->CSSetUnorderedAccessViews(
+	//	0,
+	//	1,
+	//	snowUAV.GetAddressOf(),
+	//	0
+	//);
+
+	//context->Dispatch(800, 1, 1);
+
+
+
+
+	//context->GSSetConstantBuffers(
+	//	0,
+	//	1,
+	//	m_constantBufferVP.GetAddressOf()
+	//);
+
+	//context->GSSetConstantBuffers(
+	//	1,
+	//	1,
+	//	m_camBuffer.GetAddressOf()
+	//);
+
+	//context->PSSetConstantBuffers(
+	//	0,
+	//	1,
+	//	m_lightBuffer.GetAddressOf()
+	//);
+
+	//context->PSSetConstantBuffers(
+	//	1,
+	//	1,
+	//	m_camBuffer.GetAddressOf()
+	//);
+
+	//context->PSSetShaderResources(
+	//	0,
+	//	1,
+	//	snowTexture.GetAddressOf()
+	//);
+
+	//context->PSSetSamplers(
+	//	0,
+	//	1,
+	//	sampler.GetAddressOf()
+	//);
+
+	//context->IASetInputLayout(m_inputLayoutParticle.Get());
+	//context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+	//context->GSSetShaderResources(0, 1, CSISRV.GetAddressOf());
+	//context->PSSetShaderResources(0, 1, snowTexture.GetAddressOf());
+
+	//context->VSSetShader(
+	//	m_vertexShaderSnow.Get(),
+	//	0,
+	//	0
+	//);
+	//context->GSSetShader(
+	//	m_geometryShaderSnow.Get(),
+	//	0,
+	//	0
+	//);
+	//context->PSSetShader(
+	//	m_pixelShaderSnow.Get(),
+	//	0,
+	//	0
+	//);
+
+
+	//context->Draw(800, 0);
+
+
+
+
+
+	//After Effects
+	m_screenViewport[0] = m_RTTSceneViewport;
+	context->RSSetViewports(1, m_screenViewport);
+
+	ID3D11RenderTargetView *const targetss[1] = { m_deviceResources->GetBackBufferRenderTargetView() };
+	context->OMSetRenderTargets(1, targetss, m_deviceResources->GetDepthStencilView());
+	context->ClearRenderTargetView(m_deviceResources->GetBackBufferRenderTargetView(), DirectX::Colors::White);
+	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+	{
+
+		model = XMMatrixIdentity();
+		XMStoreFloat4x4(&m_constantBufferDataM.model, XMMatrixTranspose(model));
+
+		// Prepare the constant buffer to send it to the graphics device.
+		context->UpdateSubresource1(
+			m_constantBufferM.Get(),
+			0,
+			NULL,
+			&m_constantBufferDataM,
+			0,
+			0,
+			0
+		);
+
+		// Prepare the constant buffer to send it to the graphics device.
+		context->UpdateSubresource1(
+			m_screenEffectBuffer.Get(),
+			0,
+			NULL,
+			&m_screenEffectData,
+			0,
+			0,
+			0
+		);
+
+		// Send the constant buffer to the graphics device.
+		context->VSSetConstantBuffers1(
+			0,
+			1,
+			m_constantBufferM.GetAddressOf(),
+			nullptr,
+			nullptr
+		);
+
+		context->PSSetConstantBuffers1(
+			0,
+			1,
+			m_screenEffectBuffer.GetAddressOf(),
+			nullptr,
+			nullptr
+		);
+
+		// Each vertex is one instance of the VertexPositionColor struct.
+		context->IASetVertexBuffers(
+			0,
+			1,
+			m_vertexFloor.GetAddressOf(),
+			&stride,
+			&offset
+		);
+
+		context->IASetIndexBuffer(
+			m_indexFloor.Get(),
+			DXGI_FORMAT_R16_UINT, // Each index is one 16-bit unsigned integer (short).
+			0
+		);
+
+		context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+		context->IASetInputLayout(m_inputLayout.Get());
+
+		context->PSSetShaderResources(0, 1, RTTSRVScene.GetAddressOf());
+
+		// Attach our vertex shader.
+		context->VSSetShader(
+			m_vertexShaderM.Get(),
+			nullptr,
+			0
+		);
+
+		context->GSSetShader(
+			m_GSScreenQuad.Get(),
+			nullptr,
+			0
+		);
+
+		// Attach our pixel shader.
+		context->PSSetShader(
+			m_PSScreenEffect.Get(),
+			nullptr,
+			0
+		);
+
+		// Draw the objects.
+		context->DrawIndexed(
+			1,
+			0,
+			0
+		);
+
+	}
 
 
 }
@@ -1585,12 +2478,14 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	auto loadGSVPTask = DX::ReadDataAsync(L"GeometryShaderVP.cso");
 	auto loadGSSkyTask = DX::ReadDataAsync(L"GSSkybox.cso");
 	auto loadGSSnowTask = DX::ReadDataAsync(L"GSSnow.cso");
+	auto loadGSScreenQuadTask = DX::ReadDataAsync(L"GSScreenQuad.cso");
 	auto loadPSTask = DX::ReadDataAsync(L"SamplePixelShader.cso");
 	auto loadPSNTask = DX::ReadDataAsync(L"PSNormalMap.cso");
 	auto loadPSNSTask = DX::ReadDataAsync(L"PSNormalSpecular.cso");
 	auto loadPSSkyTask = DX::ReadDataAsync(L"PSSkybox.cso");
 	auto loadPSShadowTask = DX::ReadDataAsync(L"PSShadow.cso");
 	auto loadPSSnowTask = DX::ReadDataAsync(L"PSSnow.cso");
+	auto loadPSScreenEffectTask = DX::ReadDataAsync(L"PSScreenEffect.cso");
 	auto loadCSSnowTask = DX::ReadDataAsync(L"CSSnow.cso");
 
 
@@ -1792,6 +2687,17 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		);
 	});
 
+	auto createGSScreenQuadTask = loadGSScreenQuadTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateGeometryShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				m_GSScreenQuad.GetAddressOf()
+			)
+		);
+	});
+
 	// After the pixel shader file is loaded, create the shader and constant buffer.
 	auto createPSTask = loadPSTask.then([this](const std::vector<byte>& fileData) {
 		DX::ThrowIfFailed(
@@ -1818,6 +2724,15 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 				&lightBufferDesc,
 				nullptr,
 				&m_lightBuffer
+			)
+		);
+
+		CD3D11_BUFFER_DESC screenEffectBufferDesc(sizeof(ScreenEffect), D3D11_BIND_CONSTANT_BUFFER);
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateBuffer(
+				&screenEffectBufferDesc,
+				nullptr,
+				m_screenEffectBuffer.GetAddressOf()
 			)
 		);
 	});
@@ -1888,13 +2803,13 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		);
 	});
 
-	auto createCSSnowTask = loadCSSnowTask.then([this](const std::vector<byte>& fileData) {
+	auto createPSScreenEffectTask = loadPSScreenEffectTask.then([this](const std::vector<byte>& fileData) {
 		DX::ThrowIfFailed(
-			m_deviceResources->GetD3DDevice()->CreateComputeShader(
+			m_deviceResources->GetD3DDevice()->CreatePixelShader(
 				&fileData[0],
 				fileData.size(),
 				nullptr,
-				m_computeShaderSnow.GetAddressOf()
+				m_PSScreenEffect.GetAddressOf()
 			)
 		);
 	});
@@ -1910,8 +2825,19 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		);
 	});
 
+	auto createCSSnowTask = loadCSSnowTask.then([this](const std::vector<byte>& fileData) {
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateComputeShader(
+				&fileData[0],
+				fileData.size(),
+				nullptr,
+				m_computeShaderSnow.GetAddressOf()
+			)
+		);
+	});
+
 	// Once both shaders are loaded, create the mesh.
-	auto CreateShaders = (createPSTask && createCSSnowTask && createPSSnowTask && createGSSnowTask && createVSSnowTask && createPSShadowTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask);
+	auto CreateShaders = (createPSTask && createGSScreenQuadTask && createCSSnowTask && createPSSnowTask && createGSSnowTask && createVSSnowTask && createPSShadowTask && createVSTask && createVSInstanceTask && createPSNTask && createPSNSTask && createPSSkyTask && createVSSkyTask && createGSTask && createGSSkyTask);
 
 	auto createCubeTask = CreateShaders.then([this]() {
 
@@ -2012,7 +2938,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 		HRESULT result;
 
-		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Box_Wood02Dark.dds",
+		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"paint.dds",
 			NULL, &cubeSRV);
 		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Box_Wood02Dark_N.dds",
 			NULL, cubeNSRV.GetAddressOf());
@@ -2020,19 +2946,6 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 
 	auto createFloorTask = CreateShaders.then([this]()
 	{
-		//RobustVertex floorVertices[] =
-		//{
-		//	{ XMFLOAT3(-5.0f,  0.0f, -5.0f),XMFLOAT2(0.0f,10.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-		//	{ XMFLOAT3(-5.0f,  0.0f,  5.0f),XMFLOAT2(0.0f,0.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-		//	{ XMFLOAT3(5.0f,  0.0f, -5.0f),XMFLOAT2(10.0f,10.0f),XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-		//	{ XMFLOAT3(5.0f,  0.0f, 5.0f), XMFLOAT2(10.0f,0.0f) ,XMFLOAT4(1.0f,1.0f,1.0f,1.0f),XMFLOAT3(0.0f,1.0f,0.0f) },
-		//};
-
-		//unsigned short floorIndices[] =
-		//{
-		//	0,1,2,
-		//	1,3,2
-		//};
 
 		RobustVertex floorVertices[] =
 		{
@@ -2073,21 +2986,23 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 				&m_indexFloor
 			)
 		);
-		HRESULT result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Fieldstone.dds",
+		HRESULT result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"cobblestoneD.dds",
 			NULL, &floorSRV);
-		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"FieldstoneBump.dds",
+		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"cobblestoneN.dds",
 			NULL, &floorNSRV);
+		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"cobblestoneS.dds",
+			NULL, &floorSSRV);
 	});
 
 	//TODO: make a loop through all models in a models array, make an array of modefilenames and texturefilenames that is read from a file(After Project Task)
-	auto createPyramidTask = CreateShaders.then([this]()
+	auto createFountainTask = CreateShaders.then([this]()
 	{
-		pyramid.CreateModel(m_deviceResources, "test pyramid.obj", L"Box_Wood02Dark.dds");
+		fountain.CreateModel(m_deviceResources, "fountain.obj", L"Fountain_D.dds",L"Fountain_N.dds");
 	});
 
-	auto createGoombaTask = CreateShaders.then([this]()
+	auto createGrappleGirlTask = CreateShaders.then([this]()
 	{
-		Goomba.CreateModel(m_deviceResources, "Goomba.obj", L"Diffuse_Fuzzy.dds", L"Normal_Fuzzy.dds");
+		GrappleGirl.CreateModel(m_deviceResources, "GrappleGirl.obj", L"DIFFUSE_Character.dds", L"NORMAL_Character.dds", L"SPECULAR_Character.dds");
 	});
 
 	auto createGunTurretTask = CreateShaders.then([this]()
@@ -2095,21 +3010,104 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 		GunTurret.CreateModel(m_deviceResources, "GunTurret01.obj", L"T_HeavyTurret_D.dds", L"T_HeavyTurret_N.dds", L"T_HeavyTurret_S.dds");
 	});
 
+	auto createStatueTask = CreateShaders.then([this]()
+	{
+		Statue.CreateModel(m_deviceResources, "statue.obj", L"granite.dds", L"T_HeavyTurret_N.dds");
+	});
+
+	auto createKnightTask = CreateShaders.then([this]()
+	{
+		Knight.CreateModel(m_deviceResources, "knight_sword.obj", L"armor_default_color.dds", L"armor_default_nmap.dds", L"armor_default_rough.dds");
+	});
+
 	auto createSkyCubeTask = CreateShaders.then([this]()
 	{
 		HRESULT result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"DarkSnowy.dds",
 			NULL, &SkyCubeSRV);
+
+		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"flatmap.dds",
+			NULL, flatNormalMapSRV.GetAddressOf());
 	});
 
 	auto createSphereTask = CreateShaders.then([this]()
 	{
-		Sphere.CreateModel(m_deviceResources, "Sphere.obj", L"Fieldstone.dds", L"FieldstoneBump.dds");
+		Sphere.CreateModel(m_deviceResources, "Sphere.obj", L"paint.dds", L"FieldstoneBump.dds");
 	});
 
-	//auto createWolfTask = CreateShaders.then([this]()
-	//{
-	//	Wolf.CreateModel(m_deviceResources, "Wolf.obj", L"Wolf.dds", L"WolfN.dds");
-	//});
+	auto createSnowflakesTask = CreateShaders.then([this]()
+	{
+		//Init snowFlakes data
+		for (unsigned int i = 0; i < 800; ++i)
+		{
+			Particle snowflake;
+			snowflake.age = 1;
+			snowflake.pos = XMFLOAT3(0.0f, 0.0f, 0.0f);
+			snowflake.size = XMFLOAT2(0.0f,0.0f);
+			snowflake.type = 0;
+			snowflake.velocity = XMFLOAT3(0.0f, 0.0f, 0.0f);
+			snowflakes.push_back(snowflake);
+		}
+
+		CD3D11_BUFFER_DESC constantBufferDesc;
+		constantBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+		constantBufferDesc.ByteWidth = sizeof(Particle)* snowflakes.size();
+		constantBufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		constantBufferDesc.CPUAccessFlags = 0;
+		constantBufferDesc.StructureByteStride = sizeof(Particle);
+		constantBufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+
+		D3D11_SUBRESOURCE_DATA initData;
+		initData.pSysMem = &snowflakes[0];
+
+		//Create input structured buffer
+		//Maybe not necessary
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateBuffer(
+				&constantBufferDesc,
+				&initData,
+				m_structuredBufferI.GetAddressOf()
+			)
+		);
+
+		//Create RW structured buffer
+		constantBufferDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS;
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateBuffer(
+				&constantBufferDesc,
+				nullptr,
+				m_structuredBufferRW.GetAddressOf()
+			)
+		);
+
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+		srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+		srvDesc.BufferEx.FirstElement = 0;
+		srvDesc.BufferEx.Flags = 0;
+		srvDesc.BufferEx.NumElements = snowflakes.size();
+
+		HRESULT result = m_deviceResources->GetD3DDevice()->CreateShaderResourceView(m_structuredBufferI.Get(), &srvDesc, CSISRV.GetAddressOf());
+
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+		uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+		uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+		uavDesc.Buffer.NumElements = snowflakes.size();
+		uavDesc.Buffer.FirstElement = 0;
+		uavDesc.Buffer.Flags = 0;
+
+		result = m_deviceResources->GetD3DDevice()->CreateUnorderedAccessView(m_structuredBufferRW.Get(),&uavDesc, snowUAV.GetAddressOf());
+
+
+		result = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"snowflake.dds",
+			NULL, snowTexture.GetAddressOf());
+	});
+
+	auto createWolfTask = CreateShaders.then([this]()
+	{
+		Wolf.CreateModel(m_deviceResources, "wolf_howl.obj", L"alphaWhiteR.dds", L"alphaN.dds");
+	});
+
+	//TODO: SHADOWS, make look better, wonderful grammar Dallas. also, shadow map for cone light, AND, don't shadow map if the light is turned off. cone or directional
 
 	//Texture Filter
 	CD3D11_SAMPLER_DESC samplerDesc = CD3D11_SAMPLER_DESC(CD3D11_DEFAULT());
@@ -2142,7 +3140,8 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources()
 	m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &samplerPCF);
 
 	// Once the cube is loaded, the object is ready to be rendered.
-	(createCubeTask && createPyramidTask && createGoombaTask && createFloorTask &&createGunTurretTask && createSkyCubeTask && createSphereTask).then([this]() {
+	(createCubeTask && createSnowflakesTask && createStatueTask && createFountainTask && createGrappleGirlTask && createFloorTask &&createGunTurretTask && createKnightTask && createSkyCubeTask
+		&& createSphereTask && createWolfTask).then([this]() {
 		m_loadingComplete = true;
 	});
 }
@@ -2192,7 +3191,7 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources()
 	m_RTTDepthStencilView.Reset();
 
 	Goomba.Release();
-	pyramid.Release();
+	fountain.Release();
 	GunTurret.Release();
 	Sphere.Release();
 	cube.Release();
@@ -2221,13 +3220,13 @@ Light CreatePointLight(XMFLOAT4 position, XMFLOAT4 color, float radius)
 	return tempLight;
 }
 
-Light CreateSpotLight(XMFLOAT4 position, XMFLOAT4 direction, XMFLOAT4 color, float coneRatio)
+Light CreateSpotLight(XMFLOAT4 position, XMFLOAT4 direction, XMFLOAT4 color, float coneRatio,float radius)
 {
 	Light tempLight = {};
 	tempLight.position = position;
 	tempLight.position.w = 2;
 	tempLight.color = color;
-	tempLight.ratio = XMFLOAT4(coneRatio*0.95f, coneRatio, 10, 1);
+	tempLight.ratio = XMFLOAT4(coneRatio*0.95f, coneRatio, radius, 1);
 	tempLight.normal = direction;
 	return tempLight;
 }
@@ -2235,9 +3234,27 @@ Light CreateSpotLight(XMFLOAT4 position, XMFLOAT4 direction, XMFLOAT4 color, flo
 void Sample3DSceneRenderer::InitializeLights()
 {
 	//m_lightBufferData.lights[0] = CreateDirectionalLight(XMFLOAT4(-0.1, -0.1, -0.9, 0.0f), (XMFLOAT4)Colors::White);
+	//Directionals
 	m_lightBufferData.lights[0] = CreateDirectionalLight(XMFLOAT4(-1.0f, -1.0f, -1.0f, 0.0f), (XMFLOAT4)Colors::Silver);
-	m_lightBufferData.lights[1] = CreatePointLight(XMFLOAT4(0.0f, 0.75f, -1.0f, 0.0f), (XMFLOAT4)Colors::OrangeRed, 5.0f);
-	m_lightBufferData.lights[2] = CreateSpotLight(XMFLOAT4(-0.75f, 0.0f, 0.0f, 0.0f), XMFLOAT4(1, 0, 0, 0.0f), (XMFLOAT4)Colors::Chartreuse, .90);
+
+
+	//Points
+	m_lightBufferData.lights[1] = CreatePointLight(XMFLOAT4(-10.0f, 0.5f, -10.0f, 0.0f), (XMFLOAT4)Colors::Wheat, 5.0f);
+
+	//Spots
+	m_lightBufferData.lights[2] = CreateSpotLight(XMFLOAT4(-0.75f, 0.0f, 0.0f, 0.0f), XMFLOAT4(1, 0, 0, 0.0f), (XMFLOAT4)Colors::DeepSkyBlue, .90,10);
+	m_lightBufferData.lights[3] = CreateSpotLight(XMFLOAT4(-2.0f, 5.0f, 2.0f, 0.0f), XMFLOAT4(0.5f, -1, -0.5f, 0.0f), (XMFLOAT4)Colors::Yellow, .99,50);
+	m_lightBufferData.lights[4] = CreateSpotLight(XMFLOAT4(-2.0f, 5.0f, -2.0f, 0.0f), XMFLOAT4(0.5f, -1, 0.5f, 0.0f), (XMFLOAT4)Colors::Cyan, .99,50);
+	m_lightBufferData.lights[5] = CreateSpotLight(XMFLOAT4(2.0f, 5.0f, 2.0f, 0.0f), XMFLOAT4(-0.5f, -1, -0.5f, 0.0f), (XMFLOAT4)Colors::Lime, .99,50);
+	m_lightBufferData.lights[6] = CreateSpotLight(XMFLOAT4(2.0f, 5.0f, -2.0f, 0.0f), XMFLOAT4(-0.5f, -1, 0.5f, 0.0f), (XMFLOAT4)Colors::Fuchsia, .99,50);
+}
+
+void Sample3DSceneRenderer::InitializeScreenEffect()
+{
+	m_screenEffectData.lossColor.x = 0.0f;
+	m_screenEffectData.lossColor.y = 0.0f;
+	m_screenEffectData.lossColor.z = 0.0f;
+	m_screenEffectData.lossColor.w = 0.0f;
 }
 
 std::vector<RobustVertex> LoadVerticestoVector(RobustVertex* _vertices,unsigned int _size)

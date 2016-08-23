@@ -27,7 +27,8 @@ namespace GraphicsScene
 		void StartTracking();
 		void TrackingUpdate(float positionX);
 		void StopTracking();
-		void Sample3DSceneRenderer::InitializeLights();
+		void InitializeLights();
+		void InitializeScreenEffect();
 		bool IsTracking() { return m_tracking; }
 
 
@@ -54,38 +55,51 @@ namespace GraphicsScene
 		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_geometryShaderVP;
 		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_geometryShaderSky;
 		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_geometryShaderSnow;
+		Microsoft::WRL::ComPtr<ID3D11GeometryShader>		m_GSScreenQuad;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShader;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderN;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderNS;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderSky;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderShadow;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_pixelShaderSnow;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>			m_PSScreenEffect;
 		Microsoft::WRL::ComPtr<ID3D11ComputeShader>			m_computeShaderSnow;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBufferM;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantBufferVP;
+		//Microsoft::WRL::ComPtr<ID3D11Buffer>				m_snowBufferWVP;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_lightBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_lightBufferVP;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_screenEffectBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_structuredBufferI;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_structuredBufferRW;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_camBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>				m_constantInstanceBuffer;
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState>		m_rasterizerStateCW;
 		Microsoft::WRL::ComPtr<ID3D11RasterizerState>		m_rasterizerStateCCW;
 		Microsoft::WRL::ComPtr<ID3D11RenderTargetView1>		m_RTTRenderTargetView;
 		Microsoft::WRL::ComPtr<ID3D11DepthStencilView>		m_RTTDepthStencilView;
-		
+		Microsoft::WRL::ComPtr<ID3D11RenderTargetView1>		m_RTTRTVScene;
+		Microsoft::WRL::ComPtr<ID3D11DepthStencilView>		m_RTTDSVScene;
+
 		Microsoft::WRL::ComPtr<ID3D11Texture2D>			m_RTTBackBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D>			m_RTTTexture;
+
 		D3D11_VIEWPORT										m_RTTViewport;
+		D3D11_VIEWPORT										m_RTTSceneViewport;
 
 
 		// System resources for cube geometry.
 		ModelViewProjectionConstantBuffer	m_constantBufferData;
 		ModelViewProjectionConstantBuffer	m_RTTCBufferData;
+		//WorldViewProjectionConstantBuffer	m_snowBufferWVPData;
 		ModelConstantBuffer					m_constantBufferDataM;
 		ViewProjectionConstantBuffer		m_constantBufferDataVP;
 		ViewProjectionLightBuffer			m_lightBufferDataVP;
 		MInstancedConstantBuffer			m_constantInstanceData;
 		LightConstantBuffer					m_lightBufferData;
 		SpecularBufferCam					m_specBufferCamData;
+		ScreenEffect						m_screenEffectData;
 		uint32								m_indexCount;
 		uint32								m_indexFloorCount;
 
@@ -104,20 +118,37 @@ namespace GraphicsScene
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> cubeNSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> floorSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> floorNSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> floorSSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> flatNormalMapSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> SkyCubeSRV;
 		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> RTTSRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> RTTSRVScene;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> CSISRV;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> snowTexture;
+
+		//UAVs
+		Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> snowUAV;
+
 
 		//ShadowMaps
 		ShadowMap *shadowMap;
 
 		//Models
 		Model cube;
-		Model pyramid;
+		Model fountain;
 		Model Goomba;
 		Model GunTurret;
 		Model Sphere;
+
 		Model Wolf;
+		Model Sheep;
+		Model GrappleGirl;
+		Model Knight;
+		Model Sword;
+		Model Statue;
+
+		//Particles
+		std::vector<Particle> snowflakes;
 
 		XMFLOAT4X4 camera;
 		XMFLOAT4X4 camera2;

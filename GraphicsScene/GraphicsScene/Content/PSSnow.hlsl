@@ -1,6 +1,6 @@
 #include "LightingCalculations.hlsli"
 
-#define NUM_LIGHTS 3
+#define NUM_LIGHTS 7
 
 cbuffer LightsBuffer : register(b0)
 {

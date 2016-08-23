@@ -36,8 +36,9 @@ VertexShaderOutput main(VertexShaderInput input)
 	// Transform the vertex position into projected space.
 	pos = mul(pos, model);
 	normal = mul(normal, model);
-	output.tangent = mul(float4(tangent.xyz, 0.0f), model);
-	output.biTangent = mul(float4(cross(normal.xyz, tangent.xyz), 0.0f), model);
+	//output.tangent = mul(float4(tangent.xyz, 0.0f), model);
+	output.tangent = mul(float4(tangent.xyz*tangent.w, 0.0f), model);
+	output.biTangent = mul(float4(cross(input.normal.xyz, input.tangent.xyz), 0.0f), model);
 
 	output.pos = pos;
 	output.normal = normal;

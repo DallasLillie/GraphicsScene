@@ -1,6 +1,6 @@
 #include "LightingCalculations.hlsli"
 
-#define NUM_LIGHTS 3
+#define NUM_LIGHTS 7
 
 cbuffer LightsBuffer : register(b0)
 {
@@ -28,7 +28,7 @@ texture2D baseTexture : register(t0);
 texture2D normalTexture : register(t1);
 texture2D shadowMap : register(t2);
 SamplerState filter : register(s0);
-SamplerState comp0Filter : register(s1);
+SamplerComparisonState comp0Filter : register(s1);
 
 // A pass-through function for the (interpolated) color data.
 float4 main(PixelShaderInput input) : SV_TARGET
@@ -50,6 +50,7 @@ float4 main(PixelShaderInput input) : SV_TARGET
 	float3 addColor = float3(0.0f, 0.0f, 0.0f);
 
 	newNormal = float4(mul(newNormal.xyz, TBNMatrix),0.0f);
+
 
 	float3 lightColor;
 	lightColor.x = 0;
@@ -103,43 +104,42 @@ float4 main(PixelShaderInput input) : SV_TARGET
 	}
 
 
-	input.projTex.xyz /= input.projTex.w;
-	input.projTex.xy = (input.projTex.xy + 1)*0.5f;
-	input.projTex.y *= -1.0f;
-
-	float ourDepth = input.projTex.z;
-	float sampleDepth = shadowMap.Sample(filter, input.projTex.xy);
-	float depthBias = 0.0005f;
-
-	float shadowFactor = (ourDepth <= sampleDepth+depthBias);
-
-
 	//input.projTex.xyz /= input.projTex.w;
 	//input.projTex.xy = (input.projTex.xy + 1)*0.5f;
-	//input.projTex.y *= -1.0f;
+	//input.projTex.y = 1.0f-input.projTex.y;
+
 	//float ourDepth = input.projTex.z;
+	//float sampleDepth = shadowMap.Sample(filter, input.projTex.xy);
 	//float depthBias = 0.0005f;
 
-	////const float dx = SMAP_TEX*1.5f;
-	////float percentLit = 0.0f;
-	////const float2 offsets[9] =
-	////{
-	////	float2(-dx,-dx),float2(0.0f,-dx),float2(dx,-dx),
-	////	float2(-dx,0.0f),float2(0.0f,0.0f),float2(dx,0.0f),
-	////	float2(-dx,dx),float2(0.0f,dx),float2(dx,dx)
-	////};
+	//float shadowFactor = (ourDepth <= sampleDepth+depthBias);
+
+
+	//PCF
+	input.projTex.xyz /= input.projTex.w;
+	input.projTex.xy = (input.projTex.xy + 1)*0.5f;
+	input.projTex.y = 1.0f-input.projTex.y;
+	float ourDepth = input.projTex.z;
+	float depthBias = 0.0005f;
+
+	float dx = (1.0f/2048.0f)*1.5f;
+	float percentLit = 0.0f;
+	float2 offsets[9] =
+	{
+		float2(-dx,-dx),float2(0.0f,-dx),float2(dx,-dx),
+		float2(-dx,0.0f),float2(0.0f,0.0f),float2(dx,0.0f),
+		float2(-dx,dx),float2(0.0f,dx),float2(dx,dx)
+	};
 
 
 
-	////for (unsigned int i = 0; i < 9; ++i)
-	////{
-	////	percentLit += shadowMap.SampleCmpLevelZero(comp0Filter, input.projTex.xy + offsets[i].xy, ourDepth, 0).r;
-	////}
-	////percentLit /= 9.0f;
+	for (unsigned int i = 0; i < 9; ++i)
+	{
+		percentLit += shadowMap.SampleCmpLevelZero(comp0Filter, input.projTex.xy + offsets[i].xy, ourDepth-depthBias, 0).r;
+	}
+	percentLit /= 9.0f;
 
-
-	//float sampleDepth = shadowMap.Sample(filter, input.projTex.xy).z;
-	//float shadowFactor = (ourDepth <= sampleDepth + depthBias);
+	float shadowFactor = percentLit;
 
 	return saturate(baseColor *float4((lightColor*shadowFactor)+0.1f, 1.0f));
 }

@@ -26,7 +26,7 @@ float3 CalculateSpecularLighting(LIGHT light,float3 surfacePosition,float3 camPo
 
 float3 CalculateDirectionalLighting(LIGHT directionalLight, float3 surfaceNormal)
 {
-	float lightRatio = saturate(dot(normalize(directionalLight.normal.xyz)*-1.0f, surfaceNormal));
+	float lightRatio = saturate(dot(normalize(directionalLight.normal.xyz)*-1.0f, normalize(surfaceNormal)));
 	//lightRatio += 0.9;
 	//return directionalLight.color.xyz* lightRatio;
 	return directionalLight.color.xyz* lightRatio;

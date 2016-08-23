@@ -1,0 +1,24 @@
+# Blender MTL File: 'quandtum_grapple_girl_1_0.blend'
+# Material Count: 2
+
+newmtl Character
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd textures\DIFFUSE_Character.jpg
+map_Bump  textures\\NORMAL_Character.jpg
+map_Ks  textures\\SPECULAR_Character.jpg
+map_Ns  textures\\SPECULAR_Character.jpg
+
+newmtl None
+Ns 0
+Ka 0.000000 0.000000 0.000000
+Kd 0.8 0.8 0.8
+Ks 0.8 0.8 0.8
+d 1
+illum 2

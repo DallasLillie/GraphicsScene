@@ -92,9 +92,6 @@
     <Image Include="Box_Wood02Dark.dds">
       <Filter>Assets\Textures</Filter>
     </Image>
-    <Image Include="BumpMapFlatColour.dds">
-      <Filter>Assets\Textures</Filter>
-    </Image>
     <Image Include="Diffuse_Fuzzy.dds">
       <Filter>Assets\Textures</Filter>
     </Image>
@@ -134,6 +131,54 @@
     <Image Include="snowflake.dds">
       <Filter>Assets\Textures</Filter>
     </Image>
+    <Image Include="cobblestoneD.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="cobblestoneN.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="cobblestoneS.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="DIFFUSE_Character.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="NORMAL_Character.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="Fountain_D.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="Fountain_N.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="armor_default_rough.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="armor_default_color.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="armor_default_nmap.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="SPECULAR_Character.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="granite.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="alphaWhiteR.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="flatmap.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="alphaN.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="paint.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -156,6 +201,18 @@
       <Filter>Assets\Models</Filter>
     </None>
     <None Include="Sphere.obj">
+      <Filter>Assets\Models</Filter>
+    </None>
+    <None Include="GrappleGirl.obj">
+      <Filter>Assets\Models</Filter>
+    </None>
+    <None Include="fountain.obj">
+      <Filter>Assets\Models</Filter>
+    </None>
+    <None Include="knight_sword.obj">
+      <Filter>Assets\Models</Filter>
+    </None>
+    <None Include="statue.obj">
       <Filter>Assets\Models</Filter>
     </None>
   </ItemGroup>
@@ -202,5 +259,14 @@
     <FxCompile Include="CSSnow.hlsl">
       <Filter>Content</Filter>
     </FxCompile>
+    <FxCompile Include="PSScreenEffect.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="GSScreenQuad.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="wolf_howl.obj">
+      <Filter>Assets\Models</Filter>
+    </Object>
   </ItemGroup>
 </Project>

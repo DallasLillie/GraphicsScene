@@ -1,4 +1,5 @@
 ﻿#pragma once
+using namespace DirectX;
 
 namespace GraphicsScene
 {
@@ -22,10 +23,17 @@ namespace GraphicsScene
 		DirectX::XMFLOAT4X4 projection[2];
 	};
 
+	//struct WorldViewProjectionConstantBuffer
+	//{
+	//	DirectX::XMFLOAT4X4 world;
+	//	DirectX::XMFLOAT4X4 view[2];
+	//	DirectX::XMFLOAT4X4 projection[2];
+	//};
+
 	// Constant buffer used to send MVP matrices to the vertex shader.
 	struct MInstancedConstantBuffer
 	{
-		DirectX::XMFLOAT4X4 model[10];
+		DirectX::XMFLOAT4X4 model[12];
 		DirectX::XMFLOAT4X4 view;
 		DirectX::XMFLOAT4X4 projection;
 	};
@@ -58,12 +66,17 @@ namespace GraphicsScene
 		DirectX::XMFLOAT4 ratio;
 	};
 
+	struct ScreenEffect
+	{
+		DirectX::XMFLOAT4 lossColor;
+	};
+
 	struct ViewProjectionLightBuffer
 	{
 		DirectX::XMFLOAT4X4 view;
 		DirectX::XMFLOAT4X4 projection;
 
-		void UpdateView(Light& _light, float _width, float _height)
+		void UpdateView(Light& _light, float _width, float _height,float _smSize)
 		{
 			DirectX::XMMATRIX tView = DirectX::XMMatrixIdentity();
 
@@ -131,22 +144,24 @@ namespace GraphicsScene
 			}
 			case 2:
 			{
-				//DirectX::XMVECTOR up = { 0.0f, 1.0f, 0.0f, 0.0f };
-				//DirectX::XMVECTOR zAxis = XMLoadFloat4(&_light.normal);
-				//zAxis = DirectX::XMVector3Normalize(zAxis);
-				//DirectX::XMVECTOR xAxis = DirectX::XMVector3Cross(up, zAxis);
-				//xAxis = DirectX::XMVector3Normalize(xAxis);
-				//DirectX::XMVECTOR yAxis = DirectX::XMVector3Cross(zAxis, xAxis);
-				//yAxis = DirectX::XMVector3Normalize(yAxis);
-				//DirectX::XMVECTOR pos = XMLoadFloat4(&_light.position);
-				//pos.m128_f32[3] = 1;
-				//tView = DirectX::XMMATRIX(xAxis, yAxis, zAxis, pos);
+				DirectX::XMVECTOR up = { 0.0f, 1.0f, 0.0f, 0.0f };
+				DirectX::XMVECTOR zAxis = XMLoadFloat4(&_light.normal);
+				zAxis = DirectX::XMVector3Normalize(zAxis);
+				DirectX::XMVECTOR xAxis = DirectX::XMVector3Cross(up, zAxis);
+				xAxis = DirectX::XMVector3Normalize(xAxis);
+				DirectX::XMVECTOR yAxis = DirectX::XMVector3Cross(zAxis, xAxis);
+				yAxis = DirectX::XMVector3Normalize(yAxis);
+				DirectX::XMVECTOR pos = XMLoadFloat4(&_light.position);
+				pos.m128_f32[3] = 1;
+				tView = DirectX::XMMATRIX(xAxis, yAxis, zAxis, pos);
 				break;
 			}
 			default:
 				break;
 			}
 
+
+			FixView(_smSize);
 			XMStoreFloat4x4(&view, DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(0,tView)));
 		}
 
@@ -168,7 +183,7 @@ namespace GraphicsScene
 			}
 			case 2:
 			{
-				//tProjection = DirectX::XMMatrixPerspectiveFovLH(_light.ratio.y, 1, NEAR_PLANE, _light.ratio.z);
+				tProjection = DirectX::XMMatrixPerspectiveFovLH(_light.ratio.y, 1, NEAR_PLANE, _light.ratio.z);
 				break;
 			}
 			default:
@@ -178,11 +193,38 @@ namespace GraphicsScene
 			XMStoreFloat4x4(&projection, DirectX::XMMatrixTranspose(tProjection));
 		}
 
+		void FixView(float _smSize)
+		{
+			//ShimmerShadow View Fix
+
+			XMFLOAT4 point = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+			
+
+			XMVECTOR lightspacePoint = XMVector4Transform(XMLoadFloat4(&point),XMLoadFloat4x4(&view));
+			lightspacePoint = XMVector4Transform(XMLoadFloat4(&point), XMLoadFloat4x4(&projection));
+
+			//assumes shadow map is square
+			XMVECTOR textSpacePoint = lightspacePoint * _smSize * 0.5f;
+			int wholeSpaceX = textSpacePoint.m128_f32[0];
+			int wholeSpaceY = textSpacePoint.m128_f32[1];
+
+			float errorX;
+			float errorY;
+			errorX = textSpacePoint.m128_f32[0] - wholeSpaceX;
+			errorY = textSpacePoint.m128_f32[1] - wholeSpaceY;
+			float isErrorX = errorX / (_smSize*0.5f);
+			float isErrorY = errorY / (_smSize*0.5f);
+			XMMATRIX round = XMMatrixTranslation(1.0f - isErrorX, 1.0f - isErrorY, 0);
+
+			//XMStoreFloat4x4(&view, XMMatrixMultiply(round, XMLoadFloat4x4(&view)));
+			//XMStoreFloat4x4(&projection, XMMatrixMultiply(round,XMMatrixInverse(0,XMMatrixTranspose(XMLoadFloat4x4(&projection)))));
+
+		}
 	};
 
 	struct LightConstantBuffer
 	{
-		Light lights[3];
+		Light lights[7];
 	};
 
 	struct SpecularBufferCam

@@ -3,7 +3,7 @@
 // A constant buffer that stores the three basic column-major matrices for composing geometry.
 cbuffer MInstancedConstantBuffer : register(b0)
 {
-	matrix model[10];
+	matrix model[12];
 	//matrix view;
 	//matrix projection;
 };
@@ -40,7 +40,7 @@ VertexShaderOutput main(VertexShaderInput input,uint instanceIndex : SV_Instance
 	pos = mul(pos, model[instanceIndex]);
 	normal = mul(normal, model[instanceIndex]);
 	output.tangent = mul(float4(tangent.xyz, 0.0f), model[instanceIndex]);
-	//output.tangent = mul(float4(tangent.xyz*tangent.w, 0.0f), model);
+	//output.tangent = mul(float4(tangent.xyz*tangent.w, 0.0f), model[instanceIndex]);
 	output.biTangent = mul(float4(cross(normal.xyz, tangent.xyz), 0.0f), model[instanceIndex]);
 
 	//output.wPos = pos.xyz;
